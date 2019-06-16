@@ -230,7 +230,7 @@ void RandomSampler::shuffle(std::vector<size_t>& v) {
     auto first = v.begin();
     auto last = v.end();
     size_t j;
-    for (int i=(last-first)-1; i>0; --i) {
+    for (int i = last - first-1; i > 0; --i) {
          j = distributions::uniform_draw<size_t>(0, i+1, random_number_generator);
          std::swap(first[i], first[j]);
     }
