@@ -1,12 +1,10 @@
 library(grf)
-
+library(testthat)
 seed <- 1000
 set.seed(1000)
 
 test_that("Merged regression forest attributes are sensible", {
   # Train regression forests
-  seed <- 1000
-  set.seed(seed)
   n = 50; p = 2
   X = matrix(rnorm(n*p), n, p)
   Y = X[,1] * rnorm(n)
@@ -25,8 +23,6 @@ test_that("Merged regression forest attributes are sensible", {
 
 test_that("Merged causal forest attributes are sensible", {
   # Train causal forests
-  seed <- 1000
-  set.seed(seed)
   n = 150; p = 3
   X = matrix(rnorm(n*p), n, p)
   Y = X[,1] * rnorm(n)
@@ -48,8 +44,6 @@ test_that("Merged causal forest attributes are sensible", {
 
 
 test_that("Merged causal forests give reasonable predictions", {
-  seed <- 1000
-  set.seed(seed)
   n = 200; p = 15
   X = matrix(rnorm(n*p), n, p)
   Y = X[,1] * X[,3] * X[,4] * rnorm(n) + X[,6] * X[,7] * rnorm(n)
@@ -76,8 +70,6 @@ test_that("Merged causal forests give reasonable predictions", {
 
 test_that("Incompatible forests are not mergeable", {
   # Train causal forests
-  seed <- 1000
-  set.seed(seed)
   n = 50; p = 2
   X = matrix(rnorm(n*p), n, p)
   Y = X[,1] * rnorm(n)
