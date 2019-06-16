@@ -1,5 +1,5 @@
 library(grf)
-library(testthat)
+
 seed <- 1000
 set.seed(1000)
 

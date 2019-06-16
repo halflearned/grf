@@ -1,9 +1,9 @@
 library(grf)
 
+seed <- 1000
+set.seed(seed)
 
 test_that("regression error estimates are reasonable", {
-  seed <- 1000
-  set.seed(seed)
 	p = 3
 	n = 2000
 	sigma = 1
@@ -33,8 +33,6 @@ test_that("regression error estimates are reasonable", {
 })
 
 test_that("causal error estimates are reasonable", {
-  seed <- 1000
-  set.seed(seed)
   p = 3
   n = 3000
   sigma = 0.1
