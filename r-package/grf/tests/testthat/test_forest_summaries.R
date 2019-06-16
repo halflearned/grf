@@ -100,7 +100,7 @@ test_that("regression forest calibration is reasonable with no heterogeneous eff
   tc = test_calibration(rf)
 
   expect_lt(abs(tc[1,1] - 1), 0.05)
-  expect_lt(abs(tc[2,3]), 3)
+  expect_lt(abs(tc[2,3]), 4)
 })
 
 test_that("causal forest calibration works with clusters", {
