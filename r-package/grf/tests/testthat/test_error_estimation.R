@@ -1,7 +1,6 @@
 library(grf)
 
-seed <- 1000
-set.seed(seed)
+set.seed(1234)
 
 test_that("regression error estimates are reasonable", {
 	p = 3
@@ -13,7 +12,7 @@ test_that("regression error estimates are reasonable", {
 	Y = MU + sigma * rnorm(n)
 
 	output.5.reps = replicate(20, {
-	  forest.5 = regression_forest(X, Y, num.trees = 5, ci.group.size = 1, min.node.size = 1, seed = seed)
+	  forest.5 = regression_forest(X, Y, num.trees = 5, ci.group.size = 1, min.node.size = 1)
 	  pred.5 = predict(forest.5)
 	  c(mean(pred.5$debiased.error, na.rm = TRUE),
 	    mean((pred.5$predictions - Y)^2, na.rm = TRUE))
@@ -21,7 +20,7 @@ test_that("regression error estimates are reasonable", {
 	err.debiased.5 = mean(output.5.reps[1,])
 	mse.5 = mean(output.5.reps[2,])
 
-	forest.200 = regression_forest(X, Y, num.trees = 200, ci.group.size = 1, seed = seed)
+	forest.200 = regression_forest(X, Y, num.trees = 200, ci.group.size = 1)
 	pred.200 = predict(forest.200)
 	err.debiased.200 = mean(pred.200$debiased.error, na.rm = TRUE)
 	mse.200 = mean((pred.200$predictions - Y)^2, na.rm = TRUE)
@@ -33,8 +32,8 @@ test_that("regression error estimates are reasonable", {
 })
 
 test_that("causal error estimates are reasonable", {
-  p = 10
-  n = 3000
+  p = 3
+  n = 2000
   sigma = 0.1
 
   X = matrix(2 * runif(n * p) - 1, n, p)
@@ -42,10 +41,10 @@ test_that("causal error estimates are reasonable", {
   TAU = (X[,1] > 0)
   Y = 2 * TAU * (W - 1/2) + sigma * rnorm(n)
 
-  W.forest = regression_forest(X, W, num.trees = 500, sample.fraction = 0.2, seed = seed)
+  W.forest = regression_forest(X, W, num.trees = 500, sample.fraction = 0.2)
   W.hat = predict(W.forest)$predictions
 
-  Y.forest = regression_forest(X, Y, num.trees = 500, sample.fraction = 0.2, seed = seed)
+  Y.forest = regression_forest(X, Y, num.trees = 500, sample.fraction = 0.2)
   Y.hat = predict(Y.forest)$predictions
 
   Y.resid = Y - Y.hat
@@ -53,7 +52,7 @@ test_that("causal error estimates are reasonable", {
 
   output.10.reps = replicate(20, {
     cf.10 = causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat,
-                          num.trees = 10, min.node.size = 1, stabilize.splits = TRUE, seed = seed)
+                          num.trees = 10, min.node.size = 1, stabilize.splits = TRUE)
     tau.hat.10 = predict(cf.10)
     c(mean((Y.resid - tau.hat.10$predictions * W.resid)^2, na.rm = TRUE),
       mean(tau.hat.10$debiased.error, na.rm = TRUE))
@@ -63,7 +62,7 @@ test_that("causal error estimates are reasonable", {
 
   output.20.reps = replicate(10, {
     cf.20 = causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat,
-                          num.trees = 20, min.node.size = 1, stabilize.splits = TRUE, seed = seed)
+                          num.trees = 20, min.node.size = 1, stabilize.splits = TRUE)
     tau.hat.20 = predict(cf.20)
     c(mean((Y.resid - tau.hat.20$predictions * W.resid)^2, na.rm = TRUE),
       mean(tau.hat.20$debiased.error, na.rm = TRUE))
@@ -72,7 +71,7 @@ test_that("causal error estimates are reasonable", {
   err.20 = mean(output.20.reps[2,])
 
   cf.400 = causal_forest(X, Y, W, Y.hat = Y.hat, W.hat = W.hat,
-                         num.trees = 400, min.node.size = 1, stabilize.splits = TRUE, seed = seed)
+                         num.trees = 400, min.node.size = 1, stabilize.splits = TRUE)
   tau.hat.400 = predict(cf.400)
   raw.400 = mean((Y.resid - tau.hat.400$predictions * W.resid)^2)
   err.400 =  mean(tau.hat.400$debiased.error, na.rm = TRUE)

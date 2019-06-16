@@ -1,5 +1,8 @@
 library(grf)
 
+library(testthat)
+set.seed(1234)
+
 test_that("non-vector observation throws error", {
   X = matrix(c(1,1), nrow=1, ncol=2)
   Y = matrix()
