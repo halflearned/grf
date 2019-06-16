@@ -16,8 +16,7 @@
 #include <unordered_map>
 
 #include "RandomSampler.h"
-#include "stats/stats.hpp"
-#include "gsl/randist/gsl_randist.h"
+#include "Distributions.h"
 
 RandomSampler::RandomSampler(uint seed,
                              const SamplingOptions& options) :
@@ -163,7 +162,7 @@ void RandomSampler::draw_simple(std::vector<size_t>& result,
   for (size_t i = 0; i < num_samples; ++i) {
     size_t draw;
     do {
-        draw = static_cast<size_t>(stats::runif(0, max - skip.size(), random_number_generator));
+        draw = distributions::uniform_draw<size_t>(0, max - skip.size(), random_number_generator);
         for (auto& skip_value : skip) {
         if (draw >= skip_value) {
           ++draw;
@@ -191,7 +190,7 @@ void RandomSampler::draw_fisher_yates(std::vector<size_t>& result,
 
   // Draw without replacement using Fisher Yates algorithm
   for (size_t i = result.size() - 1; i > 0; --i) {
-    auto j = static_cast<size_t>(stats::runif(0, i+1, random_number_generator));
+    auto j = distributions::uniform_draw<size_t>(0, i+1, random_number_generator);
     std::swap(result[i], result[j]);
   }
 
@@ -218,7 +217,7 @@ void RandomSampler::draw_weighted(std::vector<size_t>& result,
   for (size_t i = 0; i < num_samples; ++i) {
     do {
       // Draw a uniform number
-      double_draw = stats::runif(0, 1, random_number_generator) * cdf.back();
+      double_draw = distributions::uniform_draw<double>(0, 1, random_number_generator) * cdf.back();
       // Find its position on the cdf (inverse sampling)
       int_draw = std::distance(cdf.begin(), std::lower_bound(cdf.begin(), cdf.end(), double_draw));
     } while (chosen[int_draw]);
@@ -231,13 +230,13 @@ void RandomSampler::shuffle(std::vector<size_t>& v) {
     auto first = v.begin();
     auto last = v.end();
     size_t j;
-    for (auto i=(last-first)-1; i>0; --i) {
-         j = static_cast<size_t>(stats::runif(0, i+1, random_number_generator));
+    for (int i=(last-first)-1; i>0; --i) {
+         j = distributions::uniform_draw<size_t>(0, i+1, random_number_generator);
          std::swap(first[i], first[j]);
     }
 }
 
 
 size_t RandomSampler::sample_poisson(size_t mean) {
-    return static_cast<size_t>(stats::rpois(mean, random_number_generator));
+    return distributions::poisson_draw<size_t>(mean, random_number_generator);
 }
