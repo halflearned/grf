@@ -17,6 +17,7 @@
 
 #include "RandomSampler.h"
 #include "stats/stats.hpp"
+#include "gsl/randist/gsl_randist.h"
 
 RandomSampler::RandomSampler(uint seed,
                              const SamplingOptions& options) :
