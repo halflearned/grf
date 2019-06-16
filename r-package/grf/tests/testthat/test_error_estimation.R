@@ -33,6 +33,7 @@ test_that("regression error estimates are reasonable", {
 })
 
 test_that("causal error estimates are reasonable", {
+  set.seed(1000)
   p = 3
   n = 3000
   sigma = 0.1
