@@ -1,5 +1,6 @@
 rm(list=ls())
 library(grf)
+library(stats)
 
 num_sims = 1000
 filename = paste0("results",
@@ -13,23 +14,42 @@ for (s in seq(num_sims)) {
   print(paste0("Simulation ", s))
 
   # Generate data.
-  dgp = sample(c("simple"), 1)
-  n = sample(c(250, 1000, 5000), 1)
+  dgp = sample(c("simple", "aw1", "aw2", "aw3"), 1)
+  n = 100 #sample(c(250, 1000, 5000), 1)
   p = sample(c(10, 20), 1)
   tm = sample(c("earth", "dicekriging", "none"), 1)
+  nft = sample(c(200, 1000), 1)
 
   # Create data
   if (dgp == "simple") {
     X = matrix(rnorm(n*p), n, p)
-    X.test = matrix(0, 101, p)
     W = rbinom(n, 1, 0.4 + 0.2 * (X[,1] > 0))
     TAU = pmax(X[,1], 0)
     Y = X[,2] + pmin(X[,3], 0) + TAU * W + rnorm(n)
+  } else if (dgp == "aw1") {
+    X <- matrix(runif(n * p), n, p)
+    W <- rbinom(n, 1, 0.5)
+    zeta1 <- 1 + 1/(1 + exp(-20 * (X[, 1] - (1/3))))
+    zeta2 <- 1 + 1/(1 + exp(-20 * (X[, 2] - (1/3))))
+    Tau <- zeta1 * zeta2
+    Y <-  W * Tau + rnorm(n)
+  } else if (dgp == "aw2") {
+    X <- matrix(runif(n * p), n, p)
+    W <- rbinom(n, 1, 0.5)
+    zeta1 <- 2/(1 + exp(-12 * (X[, 1] - (1/2))))
+    zeta2 <- 2/(1 + exp(-12 * (X[, 2] - (1/2))))
+    Tau <- matrix(zeta1 * zeta2, n, 1)
+    Y <- W * Tau + rnorm(n = n)
+  } else if (dgp == "aw3") {
+    X <- matrix(runif(n * p, min = 0, max = 1), n, p)
+    treatment_propensity <- (1/4) * (1 + dbeta(X[, 1], 2, 4))
+    W <- rbinom(n = n, size = 1, prob = treatment_propensity)
+    Y <- 2 * X[, 1] - 1 + rnorm(n = n)
   }
 
   # Estimate the forest
-  if (tuning.method != "none") {
-    cf = causal_forest(X, Y, W, tune.parameters=T, tuning.method=tm)
+  if (tm != "none") {
+    cf = causal_forest(X, Y, W, tune.parameters=T, tuning.method=tm, num.fit.trees=nft)
   } else {
     cf = causal_forest(X, Y, W)
   }
@@ -43,7 +63,7 @@ for (s in seq(num_sims)) {
   # Save results
   res = rbind(c(dgp=dgp, n=n, p=p,
     cf$tuning.output$params, tuning.method=tm,
-    mse.oob=mse.oob))
+    num.fit.trees=nft, mse.oob=mse.oob))
   write.table(res, file=filename, col.names=s == 0, row.names=F, append=T)
 
 }
