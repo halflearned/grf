@@ -183,7 +183,19 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
     optimal.param <- grid[optimal.draw, ]
 
 
-  } else if (tuning.method %in% c("earth")) {
+  } else if (tuning.method %in% c("earth1", "earth2", "earth3")) {
+    degree = as.integer(substr(tuning.method, 6, 6))
+    earth.model = earth(x=fit.draws, y=debiased.errors, nfold=5, degree=degree)
+    optimize.draws <- matrix(runif(num.optimize.reps * num.params), num.optimize.reps, num.params)
+    colnames(optimize.draws) <- names(tuning.params)
+    model.surface <- predict(earth.model, newdata = optimize.draws)
+    tuned.params <- get_params_from_draw(X, optimize.draws)
+
+    grid <- cbind(error = c(model.surface), tuned.params)
+    optimal.draw <- which.min(grid[, "error"])
+    optimal.param <- grid[optimal.draw, ]
+
+  } else if (tuning.method == "earth") {
     earth.tuning.grid <- floor(expand.grid(degree = 1:3, nprune = seq(2, 100, length.out = 10)))
     earth.model <- caret::train(
       x = data.frame(fit.draws), y = debiased.errors,
@@ -191,7 +203,7 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
       trControl = caret::trainControl(method = "cv", number = 4),
       tuneGrid = earth.tuning.grid
     )
-    
+
     optimize.draws <- matrix(runif(num.optimize.reps * num.params), num.optimize.reps, num.params)
     colnames(optimize.draws) <- names(tuning.params)
     model.surface <- predict(earth.model, newdata = optimize.draws)
