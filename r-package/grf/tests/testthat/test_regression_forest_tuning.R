@@ -36,3 +36,19 @@ test_that("regression forest tuning only cross-validates null parameters", {
   expect_equal(as.numeric(tunable.params["min.node.size"]), min.node.size)
   expect_equal(as.numeric(tunable.params["imbalance.penalty"]), imbalance.penalty)
 })
+
+test_that("regression forest tuning does not break with small n", {
+  p <- 4
+  n <- 1
+
+  X <- matrix(2 * runif(n * p) - 1, n, p)
+  Y <- rnorm(n)
+
+  result <- tryCatch(
+    regression_forest(X, Y, num.trees = 200, tune.parameters = TRUE),
+    warning = function(w) "warning",
+    error = function(e) "error"
+  )
+
+  expect_equal(result, "warning")
+})

@@ -86,3 +86,22 @@ test_that("output of tune local linear causal forest is consistent with predicti
   pred.ll.max <- predict(forest, linear.correction.variables = 1:p, ll.lambda = ll.max)$predictions
   expect_true(max(abs(tuning.results$oob.predictions[, length(tuning.results$lambdas)] - pred.ll.max)) < 10^-6)
 })
+
+
+test_that("causal forest tuning does not break with small n", {
+  p <- 4
+  n <- 5
+
+  X <- matrix(2 * runif(n * p) - 1, n, p)
+  W <- rbinom(n, 1, 0.5)
+  TAU <- 0
+  Y <- rnorm(n)
+
+  result <- tryCatch(
+    causal_forest(X, Y, W, num.trees = 200, tune.parameters = TRUE),
+    warning = function(w) "warning",
+    error = function(e) "error"
+  )
+
+  expect_equal(result, "warning")
+})
