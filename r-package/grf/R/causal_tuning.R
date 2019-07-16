@@ -99,7 +99,8 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
                                clusters = NULL,
                                samples.per.cluster = NULL,
                                num.threads = NULL,
-                               seed = NULL) {
+                               seed = NULL,
+                               tuning.method = "dicekriging") {
   validate_X(X)
   validate_sample_weights(sample.weights, X)
   Y <- validate_observations(Y, X)
@@ -165,34 +166,51 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
     mean(prediction$debiased.error, na.rm = TRUE)
   })
 
-  # Fit the 'dice kriging' model to these error estimates.
-  # Note that in the 'km' call, the kriging package prints a large amount of information
-  # about the fitting process. Here, capture its console output and discard it.
-  variance.guess <- rep(var(debiased.errors) / 2, nrow(fit.draws))
-  env <- new.env()
-  capture.output(env$kriging.model <-
-    DiceKriging::km(
-      design = data.frame(fit.draws),
-      response = debiased.errors,
-      noise.var = variance.guess
-    ))
-  kriging.model <- env$kriging.model
+  if (tuning.method == "dicekriging") {
+    # Fit the 'dice kriging' model to these error estimates.
+    # Note that in the 'km' call, the kriging package prints a large amount of information
+    # about the fitting process. Here, capture its console output and discard it.
+    variance.guess <- rep(var(debiased.errors) / 2, nrow(fit.draws))
+    env <- new.env()
+    capture.output(env$kriging.model <-
+      DiceKriging::km(
+        design = data.frame(fit.draws),
+        response = debiased.errors,
+        noise.var = variance.guess
+      ))
+    kriging.model <- env$kriging.model
 
-  # To determine the optimal parameter values, predict using the kriging model at a large
-  # number of random values, then select those that produced the lowest error.
-  optimize.draws <- matrix(runif(num.optimize.reps * num.params), num.optimize.reps, num.params)
-  colnames(optimize.draws) <- names(tuning.params)
-  model.surface <- predict(kriging.model, newdata = data.frame(optimize.draws), type = "SK")
+    # To determine the optimal parameter values, predict using the kriging model at a large
+    # number of random values, then select those that produced the lowest error.
+    optimize.draws <- matrix(runif(num.optimize.reps * num.params), num.optimize.reps, num.params)
+    colnames(optimize.draws) <- names(tuning.params)
+    model.surface <- predict(kriging.model, newdata = data.frame(optimize.draws), type = "SK")
 
-  tuned.params <- get_params_from_draw(X, optimize.draws)
-  grid <- cbind(error = model.surface$mean, tuned.params)
-  optimal.draw <- which.min(grid[, "error"])
-  optimal.param <- grid[optimal.draw, ]
+    tuned.params <- get_params_from_draw(X, optimize.draws)
+    grid <- cbind(error = model.surface$mean, tuned.params)
+    optimal.draw <- which.min(grid[, "error"])
+    optimal.param <- grid[optimal.draw, ]
+
+
+  } else if (tuning.method == "earth") {
+
+    earth.model <- earth::earth(y=debiased.errors, x=fit.draws, nfold=5)
+    optimize.draws <- matrix(runif(num.optimize.reps * num.params), num.optimize.reps, num.params)
+    colnames(optimize.draws) <- names(tuning.params)
+    model.surface <- predict(earth.model, newdata = optimize.draws)
+    tuned.params <- get_params_from_draw(X, optimize.draws)
+
+    grid <- cbind(error = c(model.surface), tuned.params)
+    optimal.draw <- which.min(grid[, "error"])
+    optimal.param <- grid[optimal.draw, ]
+
+  }
 
   out <- list(
     error = optimal.param[1], params = c(fixed.params, optimal.param[-1]),
-    grid = grid
-  )
+    tuning.method = tuning.method,
+    grid = grid)
+
   class(out) <- c("tuning_output")
 
   out

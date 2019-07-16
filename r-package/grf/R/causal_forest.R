@@ -154,7 +154,8 @@ causal_forest <- function(X, Y, W,
                           num.optimize.reps = 1000,
                           compute.oob.predictions = TRUE,
                           num.threads = NULL,
-                          seed = NULL) {
+                          seed = NULL,
+                          tuning.method = "dicekriging") {
   validate_X(X)
   validate_sample_weights(sample.weights, X)
   Y <- validate_observations(Y, X)
@@ -235,7 +236,8 @@ causal_forest <- function(X, Y, W,
       prune.empty.leaves = prune.empty.leaves,
       seed = seed,
       clusters = clusters,
-      samples.per.cluster = samples.per.cluster
+      samples.per.cluster = samples.per.cluster,
+      tuning.method=tuning.method
     )
     tunable.params <- tuning.output$params
   } else {
