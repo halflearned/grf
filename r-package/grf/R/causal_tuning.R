@@ -183,9 +183,15 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
     optimal.param <- grid[optimal.draw, ]
 
 
-  } else if (tuning.method %in% c("earth1", "earth2", "earth3")) {
-    degree = as.integer(substr(tuning.method, 6, 6))
-    earth.model <- earth::earth(y=debiased.errors, x=fit.draws, nfold=5, degree=degree)
+  } else if (tuning.method %in% c("earth")) {
+    earth.tuning.grid <- floor(expand.grid(degree = 1:3, nprune = seq(2, 100, length.out = 10)))
+    earth.model <- caret::train(
+      x = data.frame(fit.draws), y = debiased.errors,
+      method = "earth", metric = "RMSE",
+      trControl = caret::trainControl(method = "cv", number = 4),
+      tuneGrid = earth.tuning.grid
+    )
+    
     optimize.draws <- matrix(runif(num.optimize.reps * num.params), num.optimize.reps, num.params)
     colnames(optimize.draws) <- names(tuning.params)
     model.surface <- predict(earth.model, newdata = optimize.draws)
