@@ -16,7 +16,7 @@ for (s in seq(num_sims)) {
   dgp = sample(c("simple"), 1)
   n = sample(c(250, 1000, 5000), 1)
   p = sample(c(10, 20), 1)
-  tm = sample(c("earth", "dicekriging"), 1)
+  tm = sample(c("earth", "dicekriging", "none"), 1)
 
   # Create data
   if (dgp == "simple") {
@@ -28,7 +28,11 @@ for (s in seq(num_sims)) {
   }
 
   # Estimate the forest
-  cf = causal_forest(X, Y, W, tune.parameters=T, tuning.method=tm)
+  if (tuning.method != "none") {
+    cf = causal_forest(X, Y, W, tune.parameters=T, tuning.method=tm)
+  } else {
+    cf = causal_forest(X, Y, W)
+  }
 
   # Estimate treatment effect on oob samples
   tau.hat.oob = predict(cf)$predictions
@@ -38,7 +42,7 @@ for (s in seq(num_sims)) {
 
   # Save results
   res = rbind(c(dgp=dgp, n=n, p=p,
-    cf$tuning.output$params, tuning.method=tm, 
+    cf$tuning.output$params, tuning.method=tm,
     mse.oob=mse.oob))
   write.table(res, file=filename, col.names=s == 0, row.names=F, append=T)
 
