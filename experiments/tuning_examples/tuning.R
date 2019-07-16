@@ -24,8 +24,8 @@ for (s in seq(num_sims)) {
   if (dgp == "simple") {
     X = matrix(rnorm(n*p), n, p)
     W = rbinom(n, 1, 0.4 + 0.2 * (X[,1] > 0))
-    TAU = pmax(X[,1], 0)
-    Y = X[,2] + pmin(X[,3], 0) + TAU * W + rnorm(n)
+    Tau = pmax(X[,1], 0)
+    Y = X[,2] + pmin(X[,3], 0) + Tau * W + rnorm(n)
   } else if (dgp == "aw1") {
     X <- matrix(runif(n * p), n, p)
     W <- rbinom(n, 1, 0.5)
@@ -58,7 +58,7 @@ for (s in seq(num_sims)) {
   tau.hat.oob = predict(cf)$predictions
 
   # Compute mse
-  mse.oob = mean((TAU - tau.hat.oob)^2)
+  mse.oob = mean((Tau - tau.hat.oob)^2)
 
   # Save results
   res = rbind(c(dgp=dgp, n=n, p=p,
