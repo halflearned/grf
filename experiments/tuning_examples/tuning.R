@@ -9,13 +9,26 @@ filename = paste0("results",
        Sys.getenv('SLURM_JOB_NAME'), "_",
        as.integer(Sys.time()), ".csv")
 
+
+       validate_mtry <- function(mtry, X) {
+         if (is.null(mtry)) {
+           num.col <- ncol(X)
+           default <- ceiling(sqrt(num.col) + 20)
+           return(min(default, num.col))
+         } else if (!is.numeric(mtry) || mtry < 0) {
+           stop("Error: Invalid value for mtry")
+         }
+         mtry
+       }
+
+
 for (s in seq(num_sims)) {
 
   print(paste0("Simulation ", s))
 
   # Generate data.
   dgp = sample(c("simple", "aw1", "aw2", "aw3"), 1)
-  n = 100 #sample(c(250, 1000, 5000), 1)
+  n = sample(c(250, 1000, 5000), 1)
   p = sample(c(10, 20), 1)
   tm = sample(c("earth", "dicekriging", "none"), 1)
   nft = sample(c(200, 1000), 1)
@@ -42,6 +55,7 @@ for (s in seq(num_sims)) {
     Y <- W * Tau + rnorm(n = n)
   } else if (dgp == "aw3") {
     X <- matrix(runif(n * p, min = 0, max = 1), n, p)
+    Tau <- 0
     treatment_propensity <- (1/4) * (1 + dbeta(X[, 1], 2, 4))
     W <- rbinom(n = n, size = 1, prob = treatment_propensity)
     Y <- 2 * X[, 1] - 1 + rnorm(n = n)
@@ -52,6 +66,9 @@ for (s in seq(num_sims)) {
     cf = causal_forest(X, Y, W, tune.parameters=T, tuning.method=tm, num.fit.trees=nft)
   } else {
     cf = causal_forest(X, Y, W)
+    cf$tuning.output$params = c(sample.fraction=0.5, min.node.size=5,
+      mtry=min(ceiling(sqrt(ncol(X)) + 20), ncol(X)),
+      alpha=0.05, imbalance.penalty=0)
   }
 
   # Estimate treatment effect on oob samples
