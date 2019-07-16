@@ -9,25 +9,12 @@ filename = paste0("results",
        Sys.getenv('SLURM_JOB_NAME'), "_",
        as.integer(Sys.time()), ".csv")
 
-
-       validate_mtry <- function(mtry, X) {
-         if (is.null(mtry)) {
-           num.col <- ncol(X)
-           default <- ceiling(sqrt(num.col) + 20)
-           return(min(default, num.col))
-         } else if (!is.numeric(mtry) || mtry < 0) {
-           stop("Error: Invalid value for mtry")
-         }
-         mtry
-       }
-
-
 for (s in seq(num_sims)) {
 
   print(paste0("Simulation ", s))
 
   # Generate data.
-  dgp = sample(c("simple", "aw1", "aw2", "aw3"), 1)
+  dgp = sample(c("simple", "aw1", "aw2", "aw3", "ai1", "ai2", "kunzel"), 1)
   n = sample(c(250, 1000, 5000), 1)
   p = sample(c(10, 20), 1)
   tm = sample(c("earth1", "earth2", "earth3", "dicekriging", "none"), 1)
@@ -59,6 +46,28 @@ for (s in seq(num_sims)) {
     treatment_propensity <- (1/4) * (1 + dbeta(X[, 1], 2, 4))
     W <- rbinom(n = n, size = 1, prob = treatment_propensity)
     Y <- 2 * X[, 1] - 1 + rnorm(n = n)
+  } else if (dgp == "ai1") {
+    X <- matrix(rnorm(n, p), n, p)
+    W <- rbinom(n = n, size = 1, prob = 0.5)
+    nu_x <- 0.5 * X[, 1] + X[, 2]
+    Tau <- 0.25 * X[, 1]
+    Y <- nu_x +  Tau * W + rnorm(n = n, sd = 0.1)
+  } else if (dgp == "ai2") {
+    X <- matrix(rnorm(n, p), n, p)
+    W <- rbinom(n = n, size = 1, prob = 0.5)
+    nu_x <- 0.5 * X[, 1] + 0.5 * X[, 2] + X[, 3] + X[, 4] + X[, 5] + X[, 6]
+    Tau <- 0.5 * ((X[, 1] > 0) * X[, 1] + (X[, 2] > 0) * X[, 2])
+    Y <- nu_x +  Tau * W + rnorm(n = n, sd = 0.1)
+  } else if (dgp == "kunzel") {
+    X <- MASS::mvrnorm(n = n, mu = rep(0, p), Sigma = toeplitz(0.5^seq(0, p-1)))
+    beta <- runif(p, -5, 5)
+    mu_0 <- X %*% beta + 5 * (X[, 1] > 0.5) + rnorm(n = n)
+    mu_1 <- mu_0 + 8 * (X[, 2] > 0.1) + rnorm(n = n)
+    W <- rbinom(n = n, size = 1, prob = 0.01)
+    Y <- ifelse(W == 0, mu_0, mu_1)
+    Tau <- 8 * (X[, 2] > 0.1)
+  } else  {
+    stop(paste0("Unknown dgp: ", dgp))
   }
 
   # Estimate the forest
