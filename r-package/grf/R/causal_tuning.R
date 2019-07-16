@@ -185,7 +185,7 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
 
   } else if (tuning.method == "earth") {
 
-    earth.model <- earth::earth(y=debiased.errors, x=fit.draws, nfold=5)
+    earth.model <- earth::earth(y=debiased.errors, x=fit.draws, nfold=5, degree=2)
     optimize.draws <- matrix(runif(num.optimize.reps * num.params), num.optimize.reps, num.params)
     colnames(optimize.draws) <- names(tuning.params)
     model.surface <- predict(earth.model, newdata = optimize.draws)
