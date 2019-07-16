@@ -30,7 +30,7 @@ for (s in seq(num_sims)) {
   dgp = sample(c("simple", "aw1", "aw2", "aw3"), 1)
   n = sample(c(250, 1000, 5000), 1)
   p = sample(c(10, 20), 1)
-  tm = sample(c("earth", "dicekriging", "none"), 1)
+  tm = sample(c("earth1", "earth2", "earth3", "dicekriging", "none"), 1)
   nft = sample(c(200, 1000), 1)
 
   # Create data
