@@ -143,12 +143,16 @@ tune_regression_forest <- function(X, Y,
   if (all(is.na(small.forest.errors))) {
     warning(paste0("Could not tune causal forest because all small forest error estimates were NA.\n",
                    "Consider increasing argument num.fit.trees."))
-    return(list("error" = NA, "params" = c(all.params)))
+   out <- list("error" = NA, "params" = c(all.params), status = "failure")
+   class(out) <- c("tuning_output")
+   return(out)
   }
   if (sd(small.forest.errors) < 1e-10) {
     warning(paste0("Could not tune causal forest because small forest errors were nearly constant.\n",
                    "Consider increasing argument num.fit.trees."))
-    return(list("error" = NA, "params" = c(all.params)))
+   out <- list("error" = NA, "params" = c(all.params), status = "failure")
+   class(out) <- c("tuning_output")
+   return(out)
   }
 
 
@@ -208,11 +212,11 @@ tune_regression_forest <- function(X, Y,
   if (default.forest.error < small.forest.optimal.error) {
     out <- list(error = default.forest.error,
                 params = default.params,
-                grid = NA)
+                grid = NA, status="default")
   } else {
     out <- list(error = small.forest.optimal.error,
                 params = c(fixed.params, tuned.params),
-                grid = grid)
+                grid = grid, status="tuned")
   }
 
   class(out) <- c("tuning_output")

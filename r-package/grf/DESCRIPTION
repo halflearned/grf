@@ -20,7 +20,6 @@ Depends:
 License: GPL-3
 LinkingTo: Rcpp, RcppEigen
 Imports:
-    DiceKriging,
     lmtest,
     Matrix,
     methods,

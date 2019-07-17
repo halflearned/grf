@@ -159,12 +159,16 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
   if (all(is.na(small.forest.errors))) {
     warning(paste0("Could not tune causal forest because all small forest error estimates were NA.\n",
                    "Consider increasing argument num.fit.trees."))
-    return(list("error" = NA, "params" = c(all.params)))
+    out <- list("error" = NA, "params" = c(all.params), status = "failure")
+    class(out) <- c("tuning_output")
+    return(out)
   }
   if (sd(small.forest.errors) < 1e-10) {
     warning(paste0("Could not tune causal forest because small forest errors were nearly constant.\n",
                    "Consider increasing argument num.fit.trees."))
-    return(list("error" = NA, "params" = c(all.params)))
+    out <- list("error" = NA, "params" = c(all.params), status = "failure")
+    class(out) <- c("tuning_output")
+    return(out)
   }
 
   # Fit an 'earth' model to these error estimates.
@@ -226,11 +230,11 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
   if (default.forest.error < small.forest.optimal.error) {
     out <- list(error = default.forest.error,
                 params = default.params,
-                grid = NA)
+                grid = NA, status="default")
   } else {
     out <- list(error = small.forest.optimal.error,
-                params = c(fixed.params, small.forest.optimal.params),
-                grid = grid)
+                params = c(fixed.params, tuned.params),
+                grid = grid, status="tuned")
   }
 
   class(out) <- c("tuning_output")

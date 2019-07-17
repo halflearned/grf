@@ -17,7 +17,7 @@ for (s in seq(num_sims)) {
 
     # Generate data.
     dgp = sample(c("simple", "aw1", "aw2", "aw3", "ai1", "ai2", "kunzel"), 1)
-    n = sample(c(250, 1000, 5000), 1)
+    n = 10 #sample(c(250, 1000, 5000), 1)
     p = sample(c(10, 20), 1)
     tune = sample(c(TRUE, FALSE), 1)
     nft = sample(c(200, 1000), 1)
@@ -81,9 +81,11 @@ for (s in seq(num_sims)) {
     # Compute mse
     mse.oob = mean((Tau - tau.hat.oob)^2)
 
+    status = ifelse(tune, cf$tuning.output$status, "notune")
+
     # Save results
-    res = rbind(c(dgp=dgp, n=n, p=p, tune=tune, num.fit.trees=nft, mse.oob=mse.oob))
+    res = rbind(c(dgp=dgp, n=n, p=p, tune=tune,
+      status=status, num.fit.trees=nft, mse.oob=mse.oob))
     print(res)
     write.table(res, file=filename, col.names=s == 0, row.names=F, append=T)
-
 }

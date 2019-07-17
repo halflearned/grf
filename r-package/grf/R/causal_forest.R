@@ -234,7 +234,7 @@ causal_forest <- function(X, Y, W,
     }, error = function(e) {
       warning(paste0("Encountered unexpected error during causal forest tuning.",
                      "Reverting to pre-tuning parameters"))
-      out <- c(params = pre.tuning.parameters, error = NA, grid = NA)
+      out <- c(params = pre.tuning.parameters, error = NA, grid = NA, status="failure")
       class(out) <- c("tuning_output")
       out
     })
