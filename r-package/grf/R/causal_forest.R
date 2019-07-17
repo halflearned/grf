@@ -158,6 +158,12 @@ causal_forest <- function(X, Y, W,
   samples.per.cluster <- validate_samples_per_cluster(samples.per.cluster, clusters)
   honesty.fraction <- validate_honesty_fraction(honesty.fraction, honesty)
   num.trees.orthog <- max(50, num.trees / 4)
+  pre.tuning.parameters <- c(
+    min.node.size = min.node.size,
+    sample.fraction = sample.fraction,
+    mtry = mtry,
+    alpha = alpha,
+    imbalance.penalty = imbalance.penalty)
 
   reduced.form.weight <- 0
 
@@ -206,25 +212,29 @@ causal_forest <- function(X, Y, W,
   }
 
   if (tune.parameters) {
-    tuning.output <- tune_causal_forest(X, Y, W, Y.hat, W.hat,
-      sample.weights = sample.weights,
-      num.fit.trees = num.fit.trees,
-      num.fit.reps = num.fit.reps,
-      num.optimize.reps = num.optimize.reps,
-      min.node.size = min.node.size,
-      sample.fraction = sample.fraction,
-      mtry = mtry,
-      alpha = alpha,
-      imbalance.penalty = imbalance.penalty,
-      stabilize.splits = stabilize.splits,
-      num.threads = num.threads,
-      honesty = honesty,
-      honesty.fraction = honesty.fraction,
-      seed = seed,
-      clusters = clusters,
-      samples.per.cluster = samples.per.cluster,
-      tuning.method=tuning.method
-    )
+    tuning.output <- tryCatch({
+      tune_causal_forest(X, Y, W, Y.hat, W.hat,
+        sample.weights = sample.weights,
+        num.fit.trees = num.fit.trees,
+        num.fit.reps = num.fit.reps,
+        num.optimize.reps = num.optimize.reps,
+        min.node.size = min.node.size,
+        sample.fraction = sample.fraction,
+        mtry = mtry,
+        alpha = alpha,
+        imbalance.penalty = imbalance.penalty,
+        stabilize.splits = stabilize.splits,
+        num.threads = num.threads,
+        honesty = honesty,
+        honesty.fraction = honesty.fraction,
+        seed = seed,
+        clusters = clusters,
+        samples.per.cluster = samples.per.cluster,
+        tuning.method=tuning.method)
+    }, error= function(e) {
+      warning("Encountered error during regression forest tuning.\nReverting to pre-tuning parameters")
+      c(pre.tuning.parameters, error=NA, grid=NA)
+    })
     tunable.params <- tuning.output$params
   } else {
     tunable.params <- c(

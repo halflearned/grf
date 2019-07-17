@@ -162,8 +162,7 @@ tune_regression_forest <- function(X, Y,
     sample.fraction = validate_sample_fraction(sample.fraction),
     mtry = validate_mtry(mtry, X),
     alpha = validate_alpha(alpha),
-    imbalance.penalty = validate_imbalance_penalty(imbalance.penalty)
-  )
+    imbalance.penalty = validate_imbalance_penalty(imbalance.penalty))
 
   default.forest <- regression_train(
     data$default, data$sparse, outcome.index, sample.weight.index,
@@ -181,13 +180,12 @@ tune_regression_forest <- function(X, Y,
     samples.per.cluster,
     compute.oob.predictions,
     num.threads,
-    seed
-  )
+    seed)
 
   default.forest.prediction <- regression_predict_oob(
     dea.forest, data$default, data$sparse,
-    outcome.index, num.threads, FALSE
-  )
+    outcome.index, num.threads, FALSE)
+    
   default.forest.error <- default.forest.prediction$debiased.error
 
   # Now compare predicted default error vs predicted-argmin error
