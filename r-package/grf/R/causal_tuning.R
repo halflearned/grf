@@ -156,8 +156,19 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
     mean(prediction$debiased.error, na.rm = TRUE)
   })
 
+  if (all(is.na(small.forest.errors))) {
+    warning(paste0("Could not tune causal forest because all small forest error estimates were NA.\n",
+                   "Consider increasing argument num.fit.trees."))
+    return(list("error" = NA, "params" = c(all.params)))
+  }
+  if (sd(small.forest.errors) < 1e-10) {
+    warning(paste0("Could not tune causal forest because small forest errors were nearly constant.\n",
+                   "Consider increasing argument num.fit.trees."))
+    return(list("error" = NA, "params" = c(all.params)))
+  }
+
   # Fit an 'earth' model to these error estimates.
-  earth.model = earth(x=fit.draws, y=small.forest.errors, nfold=5, degree=1)
+  earth.model <- earth::earth(x = fit.draws, y = small.forest.errors, nfold = 5, degree = 1, Scale.y = FALSE)
 
   # To determine the optimal parameter values, predict using the earth model at a large
   # number of random values, then select those that produced the lowest predicted error.
@@ -168,8 +179,8 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
 
   grid <- cbind(error = c(model.surface), tuned.params)
   small.forest.optimal.draw <- which.min(grid[, "error"])
-  small.forest.optimal.param <- grid[optimal.draw, -1]
-  small.forest.optimal.error <- grid[optimal.draw, 1]
+  small.forest.optimal.params <- grid[small.forest.optimal.draw, -1]
+  small.forest.optimal.error <- grid[small.forest.optimal.draw, 1]
 
   # Train a forest with default parameters, and check its predicted error.
   # This improves our chances of not doing worse than default
@@ -178,7 +189,9 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
     sample.fraction = validate_sample_fraction(sample.fraction),
     mtry = validate_mtry(mtry, X),
     alpha = validate_alpha(alpha),
-    imbalance.penalty = validate_imbalance_penalty(imbalance.penalty))
+    imbalance.penalty = validate_imbalance_penalty(imbalance.penalty)
+  )
+  default.params[!is.na(all.params)] <- all.params[!is.na(all.params)]
 
   default.forest <- causal_train(
     data$default, data$sparse,
@@ -199,23 +212,28 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
     samples.per.cluster,
     compute.oob.predictions,
     num.threads,
-    seed)
+    seed
+  )
 
   default.forest.prediction <- causal_predict_oob(
-    small.forest, data$default, data$sparse,
-    outcome.index, treatment.index, num.threads, FALSE)
+    default.forest, data$default, data$sparse,
+    outcome.index, treatment.index, num.threads, FALSE
+  )
 
-  default.forest.error <- default.forest.prediction$debiased.error
+  default.forest.error <- mean(default.forest.prediction$debiased.error, na.rm = TRUE)
 
   # Now compare predicted default error vs predicted-argmin error
-  out <- list(grid=grid)
   if (default.forest.error < small.forest.optimal.error) {
-    out["error"] = default.forest.error
-    out["params"] = default.params
+    out <- list(error = default.forest.error,
+                params = default.params,
+                grid = NA)
   } else {
-    out["error"] = small.forest.error
-    out["params"] = small.forest.params
+    out <- list(error = small.forest.optimal.error,
+                params = c(fixed.params, small.forest.optimal.params),
+                grid = grid)
   }
+
+  class(out) <- c("tuning_output")
 
   out
 }

@@ -103,14 +103,15 @@ regression_forest <- function(X, Y,
   samples.per.cluster <- validate_samples_per_cluster(samples.per.cluster, clusters)
   honesty.fraction <- validate_honesty_fraction(honesty.fraction, honesty)
   pre.tuning.parameters <- c(
-    min.node.size = min.node.size,
-    sample.fraction = sample.fraction,
-    mtry = mtry,
-    alpha = alpha,
-    imbalance.penalty = imbalance.penalty)
+    min.node.size = validate_min_node_size(min.node.size),
+    sample.fraction = validate_sample_fraction(sample.fraction),
+    mtry = validate_mtry(mtry, X),
+    alpha = validate_alpha(alpha),
+    imbalance.penalty = validate_imbalance_penalty(imbalance.penalty)
+  )
 
   if (tune.parameters) {
-    tuning.output <- tryCatch({
+    tuning.output <- #tryCatch({
       tune_regression_forest(X, Y,
         sample.weights = sample.weights,
         num.fit.trees = num.fit.trees,
@@ -126,13 +127,14 @@ regression_forest <- function(X, Y,
         honesty.fraction = honesty.fraction,
         seed = seed,
         clusters = clusters,
-        samples.per.cluster = samples.per.cluster)
-      }, error=function(e) {
-        warning("Encountered error during regression forest tuning.\nReverting to pre-tuning parameters")
-        out <- c(pre.tuning.parameters, error=NA, grid=NA)
-        class(out) <- c("tuning_output")
-        out
-    })
+        samples.per.cluster = samples.per.cluster
+      )
+    # }, error = function(e) {
+    #   warning("Encountered error during regression forest tuning.\nReverting to pre-tuning parameters")
+    #   out <- c(params = pre.tuning.parameters, error = NA, grid = NA)
+    #   class(out) <- c("tuning_output")
+    #   out
+    # })
     tunable.params <- tuning.output$params
   } else {
     tunable.params <- pre.tuning.parameters
@@ -141,6 +143,7 @@ regression_forest <- function(X, Y,
   data <- create_data_matrices(X, Y, sample.weights = sample.weights)
   outcome.index <- ncol(X) + 1
   sample.weight.index <- ncol(X) + 2
+
   forest <- regression_train(
     data$default, data$sparse, outcome.index, sample.weight.index,
     !is.null(sample.weights),

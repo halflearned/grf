@@ -158,11 +158,12 @@ causal_forest <- function(X, Y, W,
   honesty.fraction <- validate_honesty_fraction(honesty.fraction, honesty)
   num.trees.orthog <- max(50, num.trees / 4)
   pre.tuning.parameters <- c(
-    min.node.size = min.node.size,
-    sample.fraction = sample.fraction,
-    mtry = mtry,
-    alpha = alpha,
-    imbalance.penalty = imbalance.penalty)
+    min.node.size = validate_min_node_size(min.node.size),
+    sample.fraction = validate_sample_fraction(sample.fraction),
+    mtry = validate_mtry(mtry, X),
+    alpha = validate_alpha(alpha),
+    imbalance.penalty = validate_imbalance_penalty(imbalance.penalty)
+  )
 
   reduced.form.weight <- 0
 
@@ -211,7 +212,7 @@ causal_forest <- function(X, Y, W,
   }
 
   if (tune.parameters) {
-    tuning.output <- tryCatch({
+    tuning.output <- #tryCatch({
       tune_causal_forest(X, Y, W, Y.hat, W.hat,
         sample.weights = sample.weights,
         num.fit.trees = num.fit.trees,
@@ -228,22 +229,17 @@ causal_forest <- function(X, Y, W,
         honesty.fraction = honesty.fraction,
         seed = seed,
         clusters = clusters,
-        samples.per.cluster = samples.per.cluster)
-    }, error= function(e) {
-      warning("Encountered error during regression forest tuning.\nReverting to pre-tuning parameters")
-      out <- c(pre.tuning.parameters, error=NA, grid=NA)
-      class(out) <- c("tuning_output")
-      out
-    })
+        samples.per.cluster = samples.per.cluster
+      )
+    # }, error = function(e) {
+    #   warning("Encountered error during causal forest tuning.\nReverting to pre-tuning parameters")
+    #   out <- c(params = pre.tuning.parameters, error = NA, grid = NA)
+    #   class(out) <- c("tuning_output")
+    #   out
+    # })
     tunable.params <- tuning.output$params
   } else {
-    tunable.params <- c(
-      min.node.size = validate_min_node_size(min.node.size),
-      sample.fraction = validate_sample_fraction(sample.fraction),
-      mtry = validate_mtry(mtry, X),
-      alpha = validate_alpha(alpha),
-      imbalance.penalty = validate_imbalance_penalty(imbalance.penalty)
-    )
+    tunable.params <- pre.tuning.parameters
   }
 
   Y.centered <- Y - Y.hat
@@ -400,28 +396,36 @@ predict.causal_forest <- function(object, newdata = NULL,
 
     # Subtract 1 to account for C++ indexing
     linear.correction.variables <- linear.correction.variables - 1
-   }
+  }
 
-   if (!is.null(newdata)) {
-       validate_newdata(newdata, object$X.orig)
-       data <- create_data_matrices(newdata)
-       if (!local.linear) {
-           ret <- causal_predict(forest.short, train.data$default, train.data$sparse,
-                   outcome.index, treatment.index, data$default, data$sparse, num.threads, estimate.variance)
-       } else {
-           ret <- ll_causal_predict(forest.short, data$default, train.data$default, data$sparse, train.data$sparse,
-                   outcome.index, treatment.index, ll.lambda, ll.weight.penalty, linear.correction.variables,
-                   num.threads, estimate.variance)
-       }
-   } else {
-       if (!local.linear) {
-           ret <- causal_predict_oob(forest.short, train.data$default, train.data$sparse,
-                   outcome.index, treatment.index, num.threads, estimate.variance)
-       } else {
-           ret <- ll_causal_predict_oob(forest.short, train.data$default, train.data$sparse,
-                   outcome.index, treatment.index, ll.lambda, ll.weight.penalty, linear.correction.variables,
-                   num.threads, estimate.variance)
-       }
+  if (!is.null(newdata)) {
+    validate_newdata(newdata, object$X.orig)
+    data <- create_data_matrices(newdata)
+    if (!local.linear) {
+      ret <- causal_predict(
+        forest.short, train.data$default, train.data$sparse,
+        outcome.index, treatment.index, data$default, data$sparse, num.threads, estimate.variance
+      )
+    } else {
+      ret <- ll_causal_predict(
+        forest.short, data$default, train.data$default, data$sparse, train.data$sparse,
+        outcome.index, treatment.index, ll.lambda, ll.weight.penalty, linear.correction.variables,
+        num.threads, estimate.variance
+      )
+    }
+  } else {
+    if (!local.linear) {
+      ret <- causal_predict_oob(
+        forest.short, train.data$default, train.data$sparse,
+        outcome.index, treatment.index, num.threads, estimate.variance
+      )
+    } else {
+      ret <- ll_causal_predict_oob(
+        forest.short, train.data$default, train.data$sparse,
+        outcome.index, treatment.index, ll.lambda, ll.weight.penalty, linear.correction.variables,
+        num.threads, estimate.variance
+      )
+    }
   }
 
   # Convert list to data frame.
