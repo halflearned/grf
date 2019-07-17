@@ -24,6 +24,7 @@ Imports:
     lmtest,
     Matrix,
     methods,
+    earth,
     Rcpp (>= 0.12.15),
     sandwich (>= 2.4-0)
 RoxygenNote: 6.1.1
