@@ -178,10 +178,7 @@ tune_regression_forest <- function(X, Y,
     ))
   model <- env$kriging.model
 
-  # # Fit an 'earth' model to these error estimates.
-  # model <- earth::earth(x = fit.draws, y = small.forest.errors, nfold = 5, degree = 1, Scale.y = FALSE)
-
-  # To determine the optimal parameter values, predict using the earth model at a large
+  # To determine the optimal parameter values, predict using the kriging model at a large
   # number of random values, then select those that produced the lowest predicted error.
   optimize.draws <- matrix(runif(num.optimize.reps * num.params), num.optimize.reps, num.params)
   colnames(optimize.draws) <- names(tuning.params)
