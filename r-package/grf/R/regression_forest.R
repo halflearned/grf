@@ -102,34 +102,39 @@ regression_forest <- function(X, Y,
   clusters <- validate_clusters(clusters, X)
   samples.per.cluster <- validate_samples_per_cluster(samples.per.cluster, clusters)
   honesty.fraction <- validate_honesty_fraction(honesty.fraction, honesty)
+  default.parameters <- c(
+    min.node.size = validate_min_node_size(min.node.size),
+    sample.fraction = validate_sample_fraction(sample.fraction),
+    mtry = validate_mtry(mtry, X),
+    alpha = validate_alpha(alpha),
+    imbalance.penalty = validate_imbalance_penalty(imbalance.penalty)
+  )
 
   if (tune.parameters) {
-    tuning.output <- tune_regression_forest(X, Y,
-      sample.weights = sample.weights,
-      num.fit.trees = num.fit.trees,
-      num.fit.reps = num.fit.reps,
-      num.optimize.reps = num.optimize.reps,
-      min.node.size = min.node.size,
-      sample.fraction = sample.fraction,
-      mtry = mtry,
-      alpha = alpha,
-      imbalance.penalty = imbalance.penalty,
-      num.threads = num.threads,
-      honesty = honesty,
-      honesty.fraction = honesty.fraction,
-      seed = seed,
-      clusters = clusters,
-      samples.per.cluster = samples.per.cluster
-    )
+    tuning.output <- tryCatch({
+      tune_regression_forest(X, Y,
+        sample.weights = sample.weights,
+        num.fit.trees = num.fit.trees,
+        num.fit.reps = num.fit.reps,
+        num.optimize.reps = num.optimize.reps,
+        min.node.size = min.node.size,
+        sample.fraction = sample.fraction,
+        mtry = mtry,
+        alpha = alpha,
+        imbalance.penalty = imbalance.penalty,
+        num.threads = num.threads,
+        honesty = honesty,
+        honesty.fraction = honesty.fraction,
+        seed = seed,
+        clusters = clusters,
+        samples.per.cluster = samples.per.cluster
+      }, error=function(e) {
+        warning("Encountered error durining tuning. Reverting to default parameters")
+        c(default.parameters, error=NA, grid=NA)
+    })
     tunable.params <- tuning.output$params
   } else {
-    tunable.params <- c(
-      min.node.size = validate_min_node_size(min.node.size),
-      sample.fraction = validate_sample_fraction(sample.fraction),
-      mtry = validate_mtry(mtry, X),
-      alpha = validate_alpha(alpha),
-      imbalance.penalty = validate_imbalance_penalty(imbalance.penalty)
-    )
+    tunable.params <- default.parameters
   }
 
   data <- create_data_matrices(X, Y, sample.weights = sample.weights)
