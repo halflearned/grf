@@ -20,10 +20,10 @@ Depends:
 License: GPL-3
 LinkingTo: Rcpp, RcppEigen
 Imports:
+    DiceKriging,
     lmtest,
     Matrix,
     methods,
-    earth,
     Rcpp (>= 0.12.15),
     sandwich (>= 2.4-0)
 RoxygenNote: 6.1.1
