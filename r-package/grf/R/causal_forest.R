@@ -145,8 +145,7 @@ causal_forest <- function(X, Y, W,
                           num.optimize.reps = 1000,
                           compute.oob.predictions = TRUE,
                           num.threads = NULL,
-                          seed = NULL,
-                          tuning.method = "dicekriging") {
+                          seed = NULL) {
   validate_X(X)
   validate_sample_weights(sample.weights, X)
   Y <- validate_observations(Y, X)
@@ -229,8 +228,7 @@ causal_forest <- function(X, Y, W,
         honesty.fraction = honesty.fraction,
         seed = seed,
         clusters = clusters,
-        samples.per.cluster = samples.per.cluster,
-        tuning.method=tuning.method)
+        samples.per.cluster = samples.per.cluster)
     }, error= function(e) {
       warning("Encountered error during regression forest tuning.\nReverting to pre-tuning parameters")
       c(pre.tuning.parameters, error=NA, grid=NA)

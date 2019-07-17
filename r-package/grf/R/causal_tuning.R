@@ -91,8 +91,7 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
                                clusters = NULL,
                                samples.per.cluster = NULL,
                                num.threads = NULL,
-                               seed = NULL,
-                               tuning.method = "dicekriging") {
+                               seed = NULL) {
   validate_X(X)
   validate_sample_weights(sample.weights, X)
   Y <- validate_observations(Y, X)
@@ -205,7 +204,7 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
   default.forest.prediction <- causal_predict_oob(
     small.forest, data$default, data$sparse,
     outcome.index, treatment.index, num.threads, FALSE)
-    
+
   default.forest.error <- default.forest.prediction$debiased.error
 
   # Now compare predicted default error vs predicted-argmin error
