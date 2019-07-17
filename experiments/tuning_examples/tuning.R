@@ -82,9 +82,7 @@ for (s in seq(num_sims)) {
     mse.oob = mean((Tau - tau.hat.oob)^2)
 
     # Save results
-    res = rbind(c(dgp=dgp, n=n, p=p, tune=tune,
-      cf$tuning.output$params,
-      num.fit.trees=nft, mse.oob=mse.oob))
+    res = rbind(c(dgp=dgp, n=n, p=p, tune=tune, num.fit.trees=nft, mse.oob=mse.oob))
     print(res)
     write.table(res, file=filename, col.names=s == 0, row.names=F, append=T)
 
