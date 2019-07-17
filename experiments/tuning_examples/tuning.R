@@ -81,15 +81,13 @@ for (s in seq(num_sims)) {
     # Compute mse
     mse.oob = mean((Tau - tau.hat.oob)^2)
 
-    if (tune) {
-        status = cf$tuning.output$status
-    } else {
-        status = "notune"
+    status = cf$tuning.output$status
+    if (is.null(status)) {
+      status = "notune"
     }
 
     # Save results
-    res = rbind(c(dgp=dgp, n=n, p=p, tune=tune,
-      status=status, num.fit.trees=nft, mse.oob=mse.oob))
+    res = rbind(c(dgp=dgp, n=n, p=p, status=status, num.fit.trees=nft, mse.oob=mse.oob))
     print(res)
     write.table(res, file=filename, col.names=s == 0, row.names=F, append=T)
 }
