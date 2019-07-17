@@ -81,7 +81,11 @@ for (s in seq(num_sims)) {
     # Compute mse
     mse.oob = mean((Tau - tau.hat.oob)^2)
 
-    status = ifelse(tune, cf$tuning.output$status, "notune")
+    if (tune) {
+        status = cf$tuning.output$status
+    } else {
+        status = "notune"
+    }
 
     # Save results
     res = rbind(c(dgp=dgp, n=n, p=p, tune=tune,
