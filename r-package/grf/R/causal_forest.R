@@ -212,7 +212,7 @@ causal_forest <- function(X, Y, W,
   }
 
   if (tune.parameters) {
-    tuning.output <- #tryCatch({
+    tuning.output <- tryCatch({
       tune_causal_forest(X, Y, W, Y.hat, W.hat,
         sample.weights = sample.weights,
         num.fit.trees = num.fit.trees,
@@ -231,12 +231,13 @@ causal_forest <- function(X, Y, W,
         clusters = clusters,
         samples.per.cluster = samples.per.cluster
       )
-    # }, error = function(e) {
-    #   warning("Encountered error during causal forest tuning.\nReverting to pre-tuning parameters")
-    #   out <- c(params = pre.tuning.parameters, error = NA, grid = NA)
-    #   class(out) <- c("tuning_output")
-    #   out
-    # })
+    }, error = function(e) {
+      warning(paste0("Encountered unexpected error during causal forest tuning.",
+                     "Reverting to pre-tuning parameters"))
+      out <- c(params = pre.tuning.parameters, error = NA, grid = NA)
+      class(out) <- c("tuning_output")
+      out
+    })
     tunable.params <- tuning.output$params
   } else {
     tunable.params <- pre.tuning.parameters
