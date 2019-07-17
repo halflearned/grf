@@ -130,7 +130,7 @@ regression_forest <- function(X, Y,
         samples.per.cluster = samples.per.cluster
       )
     }, error = function(e) {
-      warning(paste0("Encountered unexpected error during causal forest tuning.",
+      warning(paste0("Encountered unexpected error during regression forest tuning.",
                      "Reverting to pre-tuning parameters"))
       out <- c(params = pre.tuning.parameters, error = NA, grid = NA, status="failure")
       class(out) <- c("tuning_output")

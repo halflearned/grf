@@ -141,29 +141,41 @@ tune_regression_forest <- function(X, Y,
   })
 
   if (all(is.na(small.forest.errors))) {
-    warning(paste0("Could not tune causal forest because all small forest error estimates were NA.\n",
+    warning(paste0("Could not tune regression forest because all small forest error estimates were NA.\n",
                    "Consider increasing argument num.fit.trees."))
    out <- list("error" = NA, "params" = c(all.params), status = "failure")
    class(out) <- c("tuning_output")
    return(out)
   }
   if (sd(small.forest.errors) < 1e-10) {
-    warning(paste0("Could not tune causal forest because small forest errors were nearly constant.\n",
+    warning(paste0("Could not tune regression forest because small forest errors were nearly constant.\n",
                    "Consider increasing argument num.fit.trees."))
    out <- list("error" = NA, "params" = c(all.params), status = "failure")
    class(out) <- c("tuning_output")
    return(out)
   }
 
+  # Fit the 'dice kriging' model to these error estimates.
+  # Note that in the 'km' call, the kriging package prints a large amount of information
+  # about the fitting process. Here, capture its console output and discard it.
+  variance.guess <- rep(var(small.forest.errors) / 2, nrow(fit.draws))
+  env <- new.env()
+  capture.output(env$kriging.model <-
+    DiceKriging::km(
+      design = data.frame(fit.draws),
+      response = small.forest.errors,
+      noise.var = variance.guess
+    ))
+  model <- env$kriging.model
 
-  # Fit an 'earth' model to these error estimates.
-  earth.model <- earth::earth(x = fit.draws, y = small.forest.errors, nfold = 5, degree = 1, Scale.y = FALSE)
+  # # Fit an 'earth' model to these error estimates.
+  # model <- earth::earth(x = fit.draws, y = small.forest.errors, nfold = 5, degree = 1, Scale.y = FALSE)
 
   # To determine the optimal parameter values, predict using the earth model at a large
   # number of random values, then select those that produced the lowest predicted error.
   optimize.draws <- matrix(runif(num.optimize.reps * num.params), num.optimize.reps, num.params)
   colnames(optimize.draws) <- names(tuning.params)
-  model.surface <- predict(earth.model, newdata = optimize.draws)
+  model.surface <- predict(model, newdata = data.frame(optimize.draws), type = "SK")$mean
   tuned.params <- get_params_from_draw(X, optimize.draws)
 
   grid <- cbind(error = c(model.surface), tuned.params)
