@@ -111,7 +111,7 @@ tune_regression_forest <- function(X, Y,
   colnames(fit.draws) <- names(tuning.params)
   compute.oob.predictions <- TRUE
 
-  debiased.errors <- apply(fit.draws, 1, function(draw) {
+  small.forest.errors <- apply(fit.draws, 1, function(draw) {
     params <- c(fixed.params, get_params_from_draw(X, draw))
     small.forest <- regression_train(
       data$default, data$sparse, outcome.index, sample.weight.index,
@@ -140,34 +140,66 @@ tune_regression_forest <- function(X, Y,
     mean(error, na.rm = TRUE)
   })
 
-  # Fit the 'dice kriging' model to these error estimates.
-  # Note that in the 'km' call, the kriging package prints a large amount of information
-  # about the fitting process. Here, capture its console output and discard it.
-  variance.guess <- rep(var(debiased.errors) / 2, nrow(fit.draws))
-  env <- new.env()
-  capture.output(env$kriging.model <-
-    DiceKriging::km(
-      design = data.frame(fit.draws),
-      response = debiased.errors,
-      noise.var = variance.guess
-    ))
-  kriging.model <- env$kriging.model
+  # Fit an 'earth' model to these error estimates.
+  earth.model = earth(x=fit.draws, y=small.forest.errors, nfold=5, degree=1)
 
-  # To determine the optimal parameter values, predict using the kriging model at a large
-  # number of random values, then select those that produced the lowest error.
+  # To determine the optimal parameter values, predict using the earth model at a large
+  # number of random values, then select those that produced the lowest predicted error.
   optimize.draws <- matrix(runif(num.optimize.reps * num.params), num.optimize.reps, num.params)
   colnames(optimize.draws) <- names(tuning.params)
-  model.surface <- predict(kriging.model, newdata = data.frame(optimize.draws), type = "SK")
-
+  model.surface <- predict(earth.model, newdata = optimize.draws)
   tuned.params <- get_params_from_draw(X, optimize.draws)
-  grid <- cbind(error = model.surface$mean, tuned.params)
-  optimal.draw <- which.min(grid[, "error"])
-  optimal.param <- grid[optimal.draw, ]
 
-  out <- list(
-    error = optimal.param[1], params = c(fixed.params, optimal.param[-1]),
-    grid = grid
+  grid <- cbind(error = c(model.surface), tuned.params)
+  small.forest.optimal.draw <- which.min(grid[, "error"])
+  small.forest.optimal.param <- grid[optimal.draw, -1]
+  small.forest.optimal.error <- grid[optimal.draw, 1]
+
+  # Train a forest with default parameters, and check its predicted error.
+  # This improves our chances of not doing worse than default
+  default.params <- c(
+    min.node.size = validate_min_node_size(min.node.size),
+    sample.fraction = validate_sample_fraction(sample.fraction),
+    mtry = validate_mtry(mtry, X),
+    alpha = validate_alpha(alpha),
+    imbalance.penalty = validate_imbalance_penalty(imbalance.penalty)
   )
+
+  default.forest <- regression_train(
+    data$default, data$sparse, outcome.index, sample.weight.index,
+    !is.null(sample.weights),
+    default.params["mtry"],
+    num.fit.trees,
+    default.params["min.node.size"],
+    default.params["sample.fraction"],
+    honesty,
+    coerce_honesty_fraction(honesty.fraction),
+    ci.group.size,
+    default.params["alpha"],
+    default.params["imbalance.penalty"],
+    clusters,
+    samples.per.cluster,
+    compute.oob.predictions,
+    num.threads,
+    seed
+  )
+
+  default.forest.prediction <- regression_predict_oob(
+    dea.forest, data$default, data$sparse,
+    outcome.index, num.threads, FALSE
+  )
+  default.forest.error <- default.forest.prediction$debiased.error
+
+  # Now compare predicted default error vs predicted-argmin error
+  out <- list(grid=grid)
+  if (default.forest.error < small.forest.optimal.error) {
+    out["error"] = default.forest.error
+    out["params"] = default.params
+  } else {
+    out["error"] = small.forest.error
+    out["params"] = small.forest.params
+  }
+
   class(out) <- c("tuning_output")
 
   out
