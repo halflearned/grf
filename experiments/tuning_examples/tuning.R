@@ -17,10 +17,10 @@ for (s in seq(num_sims)) {
 
     # Generate data.
     dgp = sample(c("simple", "aw1", "aw2", "aw3", "ai1", "ai2", "kunzel"), 1)
-    n = 10 #sample(c(250, 1000, 5000), 1)
-    p = sample(c(10, 20), 1)
+    n = sample(c(250, 1000, 5000), 1)
+    p = 10 #sample(c(10, 20), 1)
     tune = sample(c(TRUE, FALSE), 1)
-    nft = sample(c(200, 1000), 1)
+    nft = 200 # sample(c(200, 1000), 1)
 
     # Create data
     if (dgp == "simple") {
