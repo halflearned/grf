@@ -4,23 +4,22 @@ rm(list=ls())
 library(grf)
 library(stats)
 
-num_sims = 1000
-filename = paste0("results",
-       Sys.getenv('SLURM_JOB_ID'), "_",
-       Sys.getenv('SLURM_LOCALID'), "_",
-       Sys.getenv('SLURM_JOB_NAME'), "_",
-       as.integer(Sys.time()), ".csv")
+# These environment variables exist in the Sherlock cluster
+filename = paste0(paste0("results",
+       Sys.getenv('SLURM_JOB_ID'),
+       Sys.getenv('SLURM_LOCALID'),
+       Sys.getenv('SLURM_JOB_NAME'),
+       as.integer(Sys.time()), collapse="_"), ".csv")
 
+num_sims = 500
 for (s in seq(num_sims)) {
-  tryCatch({
-
     print(paste0("Simulation ", s))
 
     # Generate data.
     dgp = sample(c("simple", "aw1", "aw2", "aw3", "ai1", "ai2", "kunzel"), 1)
     n = sample(c(250, 1000, 5000), 1)
     p = sample(c(10, 20), 1)
-    tm = sample(c("earth", "earth1", "earth2", "earth3", "dicekriging", "none"), 1)
+    tune = sample(c(TRUE, FALSE), 1)
     nft = sample(c(200, 1000), 1)
 
     # Create data
@@ -74,14 +73,7 @@ for (s in seq(num_sims)) {
     }
 
     # Estimate the forest
-    if (tm != "none") {
-      cf = causal_forest(X, Y, W, tune.parameters=T, tuning.method=tm, num.fit.trees=nft)
-    } else {
-      cf = causal_forest(X, Y, W)
-      cf$tuning.output$params = c(sample.fraction=0.5, min.node.size=5,
-        mtry=min(ceiling(sqrt(ncol(X)) + 20), ncol(X)),
-        alpha=0.05, imbalance.penalty=0)
-    }
+    cf = causal_forest(X, Y, W, tune.parameters=tune)
 
     # Estimate treatment effect on oob samples
     tau.hat.oob = predict(cf)$predictions
@@ -90,11 +82,10 @@ for (s in seq(num_sims)) {
     mse.oob = mean((Tau - tau.hat.oob)^2)
 
     # Save results
-    res = rbind(c(dgp=dgp, n=n, p=p,
-      cf$tuning.output$params, tuning.method=tm,
+    res = rbind(c(dgp=dgp, n=n, p=p, tune=tune,
+      cf$tuning.output$params,
       num.fit.trees=nft, mse.oob=mse.oob))
+    print(res)
     write.table(res, file=filename, col.names=s == 0, row.names=F, append=T)
 
-  },
-  error=function(e) print("Dicekriging failed again...")
-)}
+}
