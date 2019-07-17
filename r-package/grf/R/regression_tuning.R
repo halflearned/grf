@@ -185,7 +185,7 @@ tune_regression_forest <- function(X, Y,
   default.forest.prediction <- regression_predict_oob(
     dea.forest, data$default, data$sparse,
     outcome.index, num.threads, FALSE)
-    
+
   default.forest.error <- default.forest.prediction$debiased.error
 
   # Now compare predicted default error vs predicted-argmin error

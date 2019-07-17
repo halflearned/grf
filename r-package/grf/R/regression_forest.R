@@ -129,7 +129,9 @@ regression_forest <- function(X, Y,
         samples.per.cluster = samples.per.cluster)
       }, error=function(e) {
         warning("Encountered error during regression forest tuning.\nReverting to pre-tuning parameters")
-        c(pre.tuning.parameters, error=NA, grid=NA)
+        out <- c(pre.tuning.parameters, error=NA, grid=NA)
+        class(out) <- c("tuning_output")
+        out
     })
     tunable.params <- tuning.output$params
   } else {
