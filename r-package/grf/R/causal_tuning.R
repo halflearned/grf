@@ -18,30 +18,37 @@
 #' @param sample.weights Weights defining the population on which we want our estimator of tau(x) to perform well
 #'                       on average. If NULL, this is the population from which X1 ... Xn are sampled. Otherwise,
 #'                       it is a reweighted version, in which we observe Xi with probability proportional to
-#'                       sample.weights[i].
-#' @param num.fit.trees The number of trees in each 'mini forest' used to fit the tuning model.
-#' @param num.fit.reps The number of forests used to fit the tuning model.
+#'                       sample.weights[i]. Default is NULL.
+#' @param num.fit.trees The number of trees in each 'mini forest' used to fit the tuning model. Default is 200.
+#' @param num.fit.reps The number of forests used to fit the tuning model. Default is 50.
 #' @param num.optimize.reps The number of random parameter values considered when using the model
-#'                          to select the optimal parameters.
+#'                          to select the optimal parameters. Default is 1000.
 #' @param sample.fraction Fraction of the data used to build each tree.
 #'                        Note: If honesty = TRUE, these subsamples will
-#'                        further be cut by a factor of honesty.fraction.
-#' @param mtry Number of variables tried for each split.
-
+#'                        further be cut by a factor of honesty.fraction. Default is 0.5.
+#' @param mtry Number of variables tried for each split. Default is
+#'             \eqn{\sqrt p + 20} where p is the number of variables.
 #' @param min.node.size A target for the minimum number of observations in each tree leaf. Note that nodes
 #'                      with size smaller than min.node.size can occur, as in the original randomForest package.
-#' @param honesty Whether to use honest splitting (i.e., sub-sample splitting).
+#'                      Default is 5.
+#' @param honesty Whether to use honest splitting (i.e., sub-sample splitting). Default is TRUE.
 #' @param honesty.fraction The fraction of data that will be used for determining splits if honesty = TRUE. Corresponds
 #'                         to set J1 in the notation of the paper. When using the defaults (honesty = TRUE and
-#'                         honesty.fraction = NULL), half of the data will be used for determining splits
-#' @param alpha A tuning parameter that controls the maximum imbalance of a split.
-#' @param imbalance.penalty A tuning parameter that controls how harshly imbalanced splits are penalized.
+#'                         honesty.fraction = NULL), half of the data will be used for determining splits.
+#'                         Default is 0.5.
+#' @param prune.empty.leaves (experimental) If true, prunes the estimation sample tree such that no leaves
+#'  are empty. If false, keep the same tree as determined in the splits sample (if an empty leave is encountered, that
+#'  tree is skipped and does not contribute to the estimate). Setting this to false may improve performance on
+#'  small/marginally powered data, but requires more trees. Only applies if honesty is enabled. Default is TRUE.
+#' @param alpha A tuning parameter that controls the maximum imbalance of a split. Default is 0.05.
+#' @param imbalance.penalty A tuning parameter that controls how harshly imbalanced splits are penalized. Default is 0.
 #' @param stabilize.splits Whether or not the treatment should be taken into account when
-#'                         determining the imbalance of a split (experimental).
+#'                         determining the imbalance of a split (experimental). Default is TRUE.
 #' @param clusters Vector of integers or factors specifying which cluster each observation corresponds to.
+#'                 Default is NULL (ignored).
 #' @param samples.per.cluster If sampling by cluster, the number of observations to be sampled from
 #'                            each cluster. Must be less than the size of the smallest cluster. If set to NULL
-#'                            software will set this value to the size of the smallest cluster.#'
+#'                            software will set this value to the size of the smallest cluster. Default is NULL.
 #' @param num.threads Number of threads used in training. By default, the number of threads is set
 #'                    to the maximum hardware concurrency.
 #' @param seed The seed of the C++ random number generator.
@@ -77,7 +84,7 @@
 #' @export
 tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
                                sample.weights = NULL,
-                               num.fit.trees = 200,
+                               num.fit.trees = 100,
                                num.fit.reps = 50,
                                num.optimize.reps = 1000,
                                min.node.size = NULL,
@@ -88,11 +95,11 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
                                stabilize.splits = TRUE,
                                honesty = TRUE,
                                honesty.fraction = NULL,
+                               prune.empty.leaves = TRUE,
                                clusters = NULL,
                                samples.per.cluster = NULL,
                                num.threads = NULL,
-                               seed = NULL,
-                               tuning.method = "dicekriging") {
+                               seed = NULL) {
   validate_X(X)
   validate_sample_weights(sample.weights, X)
   Y <- validate_observations(Y, X)
@@ -139,6 +146,7 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
       as.numeric(params["sample.fraction"]),
       honesty,
       coerce_honesty_fraction(honesty.fraction),
+      prune.empty.leaves,
       ci.group.size,
       reduced.form.weight,
       as.numeric(params["alpha"]),
@@ -160,15 +168,14 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
   if (all(is.na(small.forest.errors))) {
     warning(paste0("Could not tune causal forest because all small forest error estimates were NA.\n",
                    "Consider increasing argument num.fit.trees."))
-    out <- list("error" = NA, "params" = c(all.params), status = "failure")
-    class(out) <- c("tuning_output")
+    out <- get_tuning_output(params = c(all.params), status = "failure")
     return(out)
   }
+
   if (sd(small.forest.errors) < 1e-10) {
     warning(paste0("Could not tune causal forest because small forest errors were nearly constant.\n",
                    "Consider increasing argument num.fit.trees."))
-    out <- list("error" = NA, "params" = c(all.params), status = "failure")
-    class(out) <- c("tuning_output")
+    out <- get_tuning_output(params = c(all.params), status = "failure")
     return(out)
   }
 
@@ -195,7 +202,38 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
   grid <- cbind(error = c(model.surface), tuned.params)
   small.forest.optimal.draw <- which.min(grid[, "error"])
   small.forest.optimal.params <- grid[small.forest.optimal.draw, -1]
-  small.forest.optimal.error <- grid[small.forest.optimal.draw, 1]
+
+  # To avoid the possibility of selection bias, re-train a moderately-sized forest
+  # at the value chosen by the method above
+  retrained.forest.params <- c(fixed.params, grid[small.forest.optimal.draw, -1])
+  retrained.forest.num.trees <- num.fit.trees * 4
+  retrained.forest <- causal_train(data$default, data$sparse,
+                                  outcome.index, treatment.index, sample.weight.index,
+                                  !is.null(sample.weights),
+                                  retrained.forest.params["mtry"],
+                                  retrained.forest.num.trees,
+                                  retrained.forest.params["min.node.size"],
+                                  retrained.forest.params["sample.fraction"],
+                                  honesty,
+                                  coerce_honesty_fraction(honesty.fraction),
+                                  prune.empty.leaves,
+                                  ci.group.size,
+                                  reduced.form.weight,
+                                  retrained.forest.params["alpha"],
+                                  retrained.forest.params["imbalance.penalty"],
+                                  stabilize.splits,
+                                  clusters,
+                                  samples.per.cluster,
+                                  compute.oob.predictions,
+                                  num.threads,
+                                  seed)
+
+  retrained.forest.prediction <- causal_predict_oob(
+    retrained.forest, data$default, data$sparse,
+    outcome.index, treatment.index, num.threads, FALSE)
+
+  retrained.forest.error <- mean(retrained.forest.prediction$debiased.error, na.rm = TRUE)
+
 
   # Train a forest with default parameters, and check its predicted error.
   # This improves our chances of not doing worse than default
@@ -207,17 +245,19 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
     imbalance.penalty = validate_imbalance_penalty(imbalance.penalty)
   )
   default.params[!is.na(all.params)] <- all.params[!is.na(all.params)]
+  num.default.forest.trees <- num.fit.trees * 4
 
   default.forest <- causal_train(
     data$default, data$sparse,
     outcome.index, treatment.index, sample.weight.index,
     !is.null(sample.weights),
     default.params["mtry"],
-    num.fit.trees,
+    num.default.forest.trees,
     default.params["min.node.size"],
     default.params["sample.fraction"],
     honesty,
     coerce_honesty_fraction(honesty.fraction),
+    prune.empty.leaves,
     ci.group.size,
     reduced.form.weight,
     default.params["alpha"],
@@ -227,28 +267,26 @@ tune_causal_forest <- function(X, Y, W, Y.hat, W.hat,
     samples.per.cluster,
     compute.oob.predictions,
     num.threads,
-    seed
-  )
+    seed)
 
   default.forest.prediction <- causal_predict_oob(
     default.forest, data$default, data$sparse,
-    outcome.index, treatment.index, num.threads, FALSE
-  )
+    outcome.index, treatment.index, num.threads, FALSE)
 
   default.forest.error <- mean(default.forest.prediction$debiased.error, na.rm = TRUE)
 
-  # Now compare predicted default error vs predicted-argmin error
-  if (default.forest.error < small.forest.optimal.error) {
-    out <- list(error = default.forest.error,
-                params = default.params,
-                grid = NA, status="default")
+  # Now compare predicted errors: default parameters vs retrained parameter
+  if (default.forest.error < retrained.forest.error) {
+    out <- get_tuning_output(error = default.forest.error,
+                             params = default.params,
+                             grid = NA,
+                             status = "default")
   } else {
-    out <- list(error = small.forest.optimal.error,
-                params = c(fixed.params, tuned.params),
-                grid = grid, status="tuned")
+    out <- get_tuning_output(error = retrained.forest.error,
+                             params = retrained.forest.params,
+                             grid = grid,
+                             status = "tuned")
   }
-
-  class(out) <- c("tuning_output")
 
   out
 }

@@ -72,7 +72,7 @@
 #' @export
 tune_regression_forest <- function(X, Y,
                                    sample.weights = NULL,
-                                   num.fit.trees = 10,
+                                   num.fit.trees = 20,
                                    num.fit.reps = 100,
                                    num.optimize.reps = 1000,
                                    min.node.size = NULL,
@@ -111,7 +111,8 @@ tune_regression_forest <- function(X, Y,
   tuning.params <- all.params[is.na(all.params)]
 
   if (length(tuning.params) == 0) {
-    return(list("error" = NA, "params" = c(all.params)))
+    out <- get_tuning_output(status = "default", params = c(all.params))
+    return(out)
   }
 
   # Train several mini-forests, and gather their debiased OOB error estimates.
@@ -153,15 +154,13 @@ tune_regression_forest <- function(X, Y,
   if (all(is.na(small.forest.errors))) {
     warning(paste0("Could not tune regression forest because all small forest error estimates were NA.\n",
                    "Consider increasing argument num.fit.trees."))
-   out <- list("error" = NA, "params" = c(all.params), status = "failure")
-   class(out) <- c("tuning_output")
+   out <- get_tuning_output(params = c(all.params), status = "failure")
    return(out)
   }
   if (sd(small.forest.errors) < 1e-10) {
     warning(paste0("Could not tune regression forest because small forest errors were nearly constant.\n",
                    "Consider increasing argument num.fit.trees."))
-   out <- list("error" = NA, "params" = c(all.params), status = "failure")
-   class(out) <- c("tuning_output")
+   out <- get_tuning_output(params = c(all.params), status = "failure")
    return(out)
   }
 
@@ -188,7 +187,35 @@ tune_regression_forest <- function(X, Y,
   grid <- cbind(error = c(model.surface), tuned.params)
   small.forest.optimal.draw <- which.min(grid[, "error"])
   small.forest.optimal.params <- grid[small.forest.optimal.draw, -1]
-  small.forest.optimal.error <- grid[small.forest.optimal.draw, 1]
+
+  # To avoid the possibility of selection bias, re-train a moderately-sized forest
+  # at the value chosen by the method above
+  retrained.forest.params <- c(fixed.params, grid[small.forest.optimal.draw, -1])
+  retrained.forest.num.trees <- num.fit.trees * 4
+  retrained.forest <- regression_train(data$default, data$sparse, outcome.index, sample.weight.index,
+                                       !is.null(sample.weights),
+                                       retrained.forest.params["mtry"],
+                                       num.fit.trees,
+                                       retrained.forest.params["min.node.size"],
+                                       retrained.forest.params["sample.fraction"],
+                                       honesty,
+                                       coerce_honesty_fraction(honesty.fraction),
+                                       prune.empty.leaves,
+                                       ci.group.size,
+                                       retrained.forest.params["alpha"],
+                                       retrained.forest.params["imbalance.penalty"],
+                                       clusters,
+                                       samples.per.cluster,
+                                       compute.oob.predictions,
+                                       num.threads,
+                                       seed)
+
+  retrained.forest.prediction <- regression_predict_oob(
+    retrained.forest, data$default, data$sparse,
+    outcome.index, num.threads, FALSE
+  )
+
+  retrained.forest.error <- mean(retrained.forest.prediction$debiased.error, na.rm = TRUE)
 
   # Train a forest with default parameters, and check its predicted error.
   # This improves our chances of not doing worse than default
@@ -210,6 +237,7 @@ tune_regression_forest <- function(X, Y,
     default.params["sample.fraction"],
     honesty,
     coerce_honesty_fraction(honesty.fraction),
+    prune.empty.leaves,
     ci.group.size,
     default.params["alpha"],
     default.params["imbalance.penalty"],
@@ -227,18 +255,17 @@ tune_regression_forest <- function(X, Y,
 
   default.forest.error <- mean(default.forest.prediction$debiased.error, na.rm = TRUE)
 
-  # Now compare predicted default error vs predicted-argmin error
-  if (default.forest.error < small.forest.optimal.error) {
-    out <- list(error = default.forest.error,
-                params = default.params,
-                grid = NA, status="default")
+  # Now compare predicted errors: default parameters vs retrained parameter
+  if (default.forest.error < retrained.forest.error) {
+    out <- get_tuning_output(error = default.forest.error,
+                             params = default.params,
+                             grid = NA,
+                             status = "default")
   } else {
-    out <- list(error = small.forest.optimal.error,
-                params = c(fixed.params, tuned.params),
-                grid = grid, status="tuned")
+    out <- get_tuning_output(error = retrained.forest.error,
+                             params = retrained.forest.params,
+                             grid = grid,
+                             status = "tuned")
   }
-
-  class(out) <- c("tuning_output")
-
   out
 }

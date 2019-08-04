@@ -118,7 +118,6 @@ regression_forest <- function(X, Y,
     alpha = validate_alpha(alpha),
     imbalance.penalty = validate_imbalance_penalty(imbalance.penalty)
   )
-
   if (tune.parameters) {
     tuning.output <- tryCatch({
       tune_regression_forest(X, Y,
@@ -140,10 +139,9 @@ regression_forest <- function(X, Y,
         samples.per.cluster = samples.per.cluster
       )
     }, error = function(e) {
-      warning(paste0("Reverting to pre-tuning parameters because",
-                     "of unexpected error during causal forest tuning:", e))
-      out <- c(params = pre.tuning.parameters, error = NA, grid = NA, status="failure")
-      class(out) <- c("tuning_output")
+      warning(paste0("Reverting to pre-tuning parameters because of the following ",
+                     "unexpected error during regression forest tuning:\n", e))
+      out <- get_tuning_output(params = pre.tuning.parameters, status = "failure")
       out
     })
     tunable.params <- tuning.output$params
@@ -151,10 +149,10 @@ regression_forest <- function(X, Y,
     tunable.params <- pre.tuning.parameters
   }
 
+
   data <- create_data_matrices(X, Y, sample.weights = sample.weights)
   outcome.index <- ncol(X) + 1
   sample.weight.index <- ncol(X) + 2
-
   forest <- regression_train(
     data$default, data$sparse, outcome.index, sample.weight.index,
     !is.null(sample.weights),
