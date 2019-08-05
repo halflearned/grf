@@ -15,7 +15,7 @@ for (s in seq(num_sims)) {
 
   # Generate data.
   dgp = sample(c("simple"), 1)
-  n = sample(c(250, 1000, 5000), 1)
+  n = sample(c(200, 1000, 5000), 1)
   p = sample(c(5, 10, 20), 1)
   X = matrix(rnorm(n*p), n, p)
 
@@ -67,8 +67,9 @@ for (s in seq(num_sims)) {
   mse.not = mean((TAU - tau.hat.not)^2)
 
   # Save results
-  res1 = rbind(c(cf.tuned$tuning.output$params, cf.tuned$tuning.output$status, mse.oob=mse.tuned))
-  res2 = rbind(c(cf.not$tunable.params, "notune", mse.oob=mse.not))
+  sim.params = c(dgp=dgp, n=n, p=p)
+  res1 = rbind(c(sim.params, cf.tuned$tuning.output$status, mse.oob=mse.tuned))
+  res2 = rbind(c(sim.params, "notune", mse.oob=mse.not))
   write.table(res1, file=filename, col.names=s == 0, row.names=F, append=T)
   write.table(res2, file=filename, col.names=s == 0, row.names=F, append=T)
 
