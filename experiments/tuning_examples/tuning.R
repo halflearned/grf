@@ -14,7 +14,7 @@ for (s in seq(num_sims)) {
   print(paste0("Simulation ", s))
 
   # Generate data.
-  dgp = sample(c("simple"), 1)
+  dgp = sample(c("simple", "aw1", "aw2", "amle1", "amle2"), 1)
   n = sample(c(200, 1000, 5000), 1)
   p = sample(c(5, 10, 20), 1)
   X = matrix(rnorm(n*p), n, p)
