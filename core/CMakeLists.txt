@@ -36,6 +36,7 @@ endif()
 ## ======================================================================================##
 include_directories(src test third_party)
 file(GLOB_RECURSE SOURCES src/*.cpp test/*.cpp)
+file(GLOB_RECURSE CLISOURCES src/*.cpp main/*.cpp)
 
 ## ======================================================================================##
 ## Debug and release targets
@@ -57,5 +58,6 @@ ADD_CUSTOM_TARGET(release
 ## ======================================================================================##
 ## Executable
 ## ======================================================================================##
-add_executable(grf ${SOURCES})
+add_executable(grftest ${SOURCES})
+add_executable(grf ${CLISOURCES})
 
