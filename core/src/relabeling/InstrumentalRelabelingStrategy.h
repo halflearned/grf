@@ -30,7 +30,7 @@ public:
 
   InstrumentalRelabelingStrategy(double reduced_form_weight);
 
-  std::unordered_map<size_t, double> relabel(
+  std::vector<double> relabel(
       const std::vector<size_t>& samples,
       const Data* data);
 

@@ -17,11 +17,12 @@
 
 #include "relabeling/NoopRelabelingStrategy.h"
 
-std::unordered_map<size_t, double> NoopRelabelingStrategy::relabel(
+std::vector<double> NoopRelabelingStrategy::relabel(
     const std::vector<size_t>& samples,
     const Data* data) {
 
-  std::unordered_map<size_t, double> relabeled_observations;
+  std::vector<double> relabeled_observations;
+  relabeled_observations.resize(data->get_num_rows());
   for (size_t sample : samples) {
     double outcome = data->get_outcome(sample);
     relabeled_observations[sample] = outcome;

@@ -17,8 +17,8 @@
 
 #include "CustomRelabelingStrategy.h"
 
-std::unordered_map<size_t, double> CustomRelabelingStrategy::relabel(
+std::vector<double> CustomRelabelingStrategy::relabel(
     const std::vector<size_t>& samples,
     const Data* data) {
-  return std::unordered_map<size_t, double>();
+  return std::vector<double>();
 }
