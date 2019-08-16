@@ -40,9 +40,7 @@ int main(int argc, char **argv) {
 
     std::cout << "Fitting forest_type: " << forest_type << "\n";
     std::cout << "Training data set: " << train_filename << "\n";
-
-    train_filename = "/Users/vitorh/Documents/grf/core/test/forest/resources/regression_data.csv";
-
+    
     // Load data
     std::shared_ptr<Data> train_data(load_data(train_filename));
     std::shared_ptr<Data> test_data;
