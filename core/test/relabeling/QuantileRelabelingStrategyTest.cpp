@@ -39,7 +39,7 @@ TEST_CASE("simple quantile relabeling", "[quantile, relabeling]") {
 
   std::vector<double> relabeled_outcomes;
   for (auto& sample : samples) {
-    REQUIRE(relabeled_observations.count(sample));
+    REQUIRE(relabeled_observations[sample]);
     relabeled_outcomes.push_back(relabeled_observations.at(sample));
   }
 
@@ -60,7 +60,7 @@ TEST_CASE("quantile relabeling subset of observations", "[quantile, relabeling]"
 
   std::vector<double> relabeled_outcomes;
   for (auto& sample : samples) {
-    REQUIRE(relabeled_observations.count(sample));
+    REQUIRE(relabeled_observations[sample]);
     relabeled_outcomes.push_back(relabeled_observations.at(sample));
   }
 

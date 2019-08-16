@@ -201,7 +201,7 @@ bool TreeTrainer::split_node_internal(size_t node,
     return true;
   }
 
-  std::unordered_map<size_t, double> responses_by_sample = relabeling_strategy->relabel(
+  std::vector<double> responses_by_sample = relabeling_strategy->relabel(
       samples[node], data);
 
   if (responses_by_sample.empty() || splitting_rule->find_best_split(node,
