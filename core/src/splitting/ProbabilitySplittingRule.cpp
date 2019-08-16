@@ -47,7 +47,7 @@ ProbabilitySplittingRule::~ProbabilitySplittingRule() {
 
 bool ProbabilitySplittingRule::find_best_split(size_t node,
                                                const std::vector<size_t>& possible_split_vars,
-                                               const std::unordered_map<size_t, double>& labels_by_sample,
+                                               std::vector<double>& labels_by_sample,
                                                const std::vector<std::vector<size_t>>& samples,
                                                std::vector<size_t>& split_vars,
                                                std::vector<double>& split_values) {
@@ -101,7 +101,7 @@ void ProbabilitySplittingRule::find_best_split_value_small_q(size_t node, size_t
                                                              double& best_value,
                                                              size_t& best_var,
                                                              double& best_decrease,
-                                                             const std::unordered_map<size_t, double>& labels_by_sample,
+                                                             std::vector<double>& labels_by_sample,
                                                              const std::vector<std::vector<size_t>>& samples) {
 
   // Create possible split values
@@ -189,7 +189,7 @@ void ProbabilitySplittingRule::find_best_split_value_large_q(size_t node, size_t
                                                              double& best_value,
                                                              size_t& best_var,
                                                              double& best_decrease,
-                                                             const std::unordered_map<size_t, double>& responses_by_sample,
+                                                             std::vector<double>& responses_by_sample,
                                                              const std::vector<std::vector<size_t>>& samples) {
   // Set counters to 0
   size_t num_unique = data->get_num_unique_data_values(var);
