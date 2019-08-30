@@ -10,8 +10,12 @@ create_dot_body <- function(tree, index = 1) {
   # Leaf case: print label only
   if (node$is_leaf) {
     num_samples <- length(node$samples)
-    line_label <- paste(index - 1, ' [shape=box,style=filled,color=".7 .3 1.0" , label="leaf node', "
-size = ", num_samples, '"];')
+    leaf_stats_text <- ""
+    if(!is.null(node$leaf_stats)){
+      leaf_stats_text <- paste("\n", paste(names(node$leaf_stats), unname(node$leaf_stats), sep = " = ", collapse = "\n"))
+    }
+    line_label <- paste(index - 1, ' [shape=box,style=filled,color=".7 .3 1.0" , label="size = ',
+                        num_samples, leaf_stats_text, '"];')
     return(line_label)
   }
 
@@ -84,6 +88,21 @@ export_graphviz <- function(tree) {
 #' @param ... Additional arguments (currently ignored).
 #'
 #' @method plot grf_tree
+#' @examples
+#' \dontrun{
+#' # Save the plot of a tree in the causal forest.
+#' install.packages("DiagrammeR")
+#' install.packages("DiagrammeRsvg")
+#' n <- 500
+#' p <- 10
+#' X <- matrix(rnorm(n * p), n, p)
+#' W <- rbinom(n, 1, 0.5)
+#' Y <- pmax(X[, 1], 0) * W + X[, 2] + pmin(X[, 3], 0) + rnorm(n)
+#' c.forest <- causal_forest(X, Y, W)
+#' #save the first tree in the forest as plot.svg
+#' tree.plot = plot(get_tree(c.forest, 1))
+#' cat(DiagrammeRsvg::export_svg(tree.plot), file='plot.svg')
+#'}
 #' @export
 plot.grf_tree <- function(x, ...) {
   if (!requireNamespace("DiagrammeR", quietly = TRUE)) {

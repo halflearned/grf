@@ -37,8 +37,8 @@ std::shared_ptr<Tree> TreeTrainer::train(const Data* data,
   std::vector<size_t> split_vars;
   std::vector<double> split_values;
 
-  child_nodes.push_back(std::vector<size_t>());
-  child_nodes.push_back(std::vector<size_t>());
+  child_nodes.emplace_back();
+  child_nodes.emplace_back();
   create_empty_node(child_nodes, nodes, split_vars, split_values);
 
   std::vector<size_t> new_leaf_samples;
@@ -94,7 +94,7 @@ std::shared_ptr<Tree> TreeTrainer::train(const Data* data,
   }
 
   PredictionValues prediction_values;
-  if (prediction_strategy != NULL) {
+  if (prediction_strategy != nullptr) {
     prediction_values = prediction_strategy->precompute_prediction_values(tree->get_leaf_samples(), data);
   }
   tree->set_prediction_values(prediction_values);
@@ -102,7 +102,7 @@ std::shared_ptr<Tree> TreeTrainer::train(const Data* data,
   return tree;
 }
 
-void TreeTrainer::repopulate_leaf_nodes(std::shared_ptr<Tree> tree,
+void TreeTrainer::repopulate_leaf_nodes(const std::shared_ptr<Tree>& tree,
                                         const Data* data,
                                         const std::vector<size_t>& leaf_samples,
                                         const bool prune_empty_leaves) const {
@@ -139,7 +139,7 @@ void TreeTrainer::create_split_variable_subset(std::vector<size_t>& result,
 
 bool TreeTrainer::split_node(size_t node,
                              const Data* data,
-                             std::shared_ptr<SplittingRule> splitting_rule,
+                             const std::shared_ptr<SplittingRule>& splitting_rule,
                              RandomSampler& sampler,
                              std::vector<std::vector<size_t>>& child_nodes,
                              std::vector<std::vector<size_t>>& samples,
@@ -189,7 +189,7 @@ bool TreeTrainer::split_node(size_t node,
 
 bool TreeTrainer::split_node_internal(size_t node,
                                       const Data* data,
-                                      std::shared_ptr<SplittingRule> splitting_rule,
+                                      const std::shared_ptr<SplittingRule>& splitting_rule,
                                       const std::vector<size_t>& possible_split_vars,
                                       const std::vector<std::vector<size_t>>& samples,
                                       std::vector<size_t>& split_vars,
@@ -223,7 +223,7 @@ void TreeTrainer::create_empty_node(std::vector<std::vector<size_t>>& child_node
                                     std::vector<double>& split_values) const {
   child_nodes[0].push_back(0);
   child_nodes[1].push_back(0);
-  samples.push_back(std::vector<size_t>());
+  samples.emplace_back();
   split_vars.push_back(0);
   split_values.push_back(0);
 }

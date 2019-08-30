@@ -22,12 +22,12 @@
 #include "tree/Tree.h"
 #include "relabeling/RelabelingStrategy.h"
 
-class QuantileRelabelingStrategy: public RelabelingStrategy {
+class QuantileRelabelingStrategy final: public RelabelingStrategy {
 public:
   QuantileRelabelingStrategy(const std::vector<double>& quantiles);
   std::unordered_map<size_t, double> relabel(
       const std::vector<size_t>& samples,
-      const Data* data);
+      const Data* data) const;
 private:
   std::vector<double> quantiles;
 };

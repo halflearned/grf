@@ -26,7 +26,7 @@ Data::Data() :
     num_rows(0),
     num_cols(0),
     external_data(true),
-    index_data(0),
+    index_data(nullptr),
     max_num_unique_values(0),
     outcome_index(),
     treatment_index(),
@@ -34,12 +34,12 @@ Data::Data() :
     weight_index() {}
 
 Data::~Data() {
-  if (index_data != 0) {
+  if (index_data != nullptr) {
     delete[] index_data;
   }
 }
 
-bool Data::load_from_file(std::string filename) {
+bool Data::load_from_file(const std::string& filename) {
   bool result;
 
   // Open input file
@@ -65,9 +65,9 @@ bool Data::load_from_file(std::string filename) {
   input_file.open(filename);
 
   // Find out if comma, semicolon or whitespace seperated and call appropriate method
-  if (first_line.find(",") != std::string::npos) {
+  if (first_line.find(',') != std::string::npos) {
     result = load_from_other_file(input_file, first_line, ',');
-  } else if (first_line.find(";") != std::string::npos) {
+  } else if (first_line.find(';') != std::string::npos) {
     result = load_from_other_file(input_file, first_line, ';');
   } else {
     result = load_from_whitespace_file(input_file, first_line);
@@ -78,7 +78,8 @@ bool Data::load_from_file(std::string filename) {
   return result;
 }
 
-bool Data::load_from_whitespace_file(std::ifstream& input_file, std::string first_line) {
+bool Data::load_from_whitespace_file(std::ifstream& input_file,
+                                     const std::string& first_line) {
   // Read the first line to determine the number of columns.
   std::string dummy_token;
   std::stringstream first_line_stream(first_line);
@@ -110,7 +111,9 @@ bool Data::load_from_whitespace_file(std::ifstream& input_file, std::string firs
   return error;
 }
 
-bool Data::load_from_other_file(std::ifstream& input_file, std::string first_line, char seperator) {
+bool Data::load_from_other_file(std::ifstream& input_file,
+                                const std::string& first_line,
+                                char seperator) {
   // Read the first line to determine the number of columns.
   std::string dummy_token;
   std::stringstream first_line_stream(first_line);
@@ -162,8 +165,8 @@ void Data::set_weight_index(size_t index) {
 
 void Data::get_all_values(std::vector<double>& all_values, const std::vector<size_t>& samples, size_t var) const {
   all_values.reserve(samples.size());
-  for (size_t i = 0; i < samples.size(); ++i) {
-    all_values.push_back(get(samples[i], var));
+  for (size_t sample : samples) {
+    all_values.push_back(get(sample, var));
   }
   std::sort(all_values.begin(), all_values.end());
   all_values.erase(unique(all_values.begin(), all_values.end()), all_values.end());

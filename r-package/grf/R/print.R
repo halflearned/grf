@@ -15,7 +15,7 @@ print.grf <- function(x, decay.exponent = 2, max.depth = 4, ...) {
   num.samples <- nrow(x$X.orig)
 
   cat("GRF forest object of type", main.class, "\n")
-  cat("Number of trees: ", x[["_num_trees"]], "\n")
+  cat("Number of trees:", x[["_num_trees"]], "\n")
   cat("Number of training samples:", num.samples, "\n")
 
   cat("Variable importance:", "\n")
@@ -30,7 +30,7 @@ print.grf <- function(x, decay.exponent = 2, max.depth = 4, ...) {
 #' @export
 print.grf_tree <- function(x, ...) {
   cat("GRF tree object", "\n")
-  cat("Number of training samples: ", x$num_samples, "\n")
+  cat("Number of training samples:", x$num_samples, "\n")
   cat("Variable splits:", "\n")
 
   # Add the index of each node as an attribute for easy access.
@@ -52,7 +52,11 @@ print.grf_tree <- function(x, ...) {
     output <- paste(output, "(", node$index, ")", sep = "")
 
     if (node$is_leaf) {
-      output <- paste(output, "* num_samples:", length(node$samples))
+      leaf_stats_text <- ""
+      if(!is.null(node$leaf_stats)){
+        leaf_stats_text <- paste(paste(names(node$leaf_stats), unname(node$leaf_stats), sep = ": ", collapse = " "))
+      }
+      output <- paste(output, "* num_samples:", length(node$samples), "", leaf_stats_text)
     } else {
       split.var <- node$split_variable
       split.var.name <- x$columns[split.var]
@@ -117,6 +121,11 @@ print.tuning_output <- function(x, tuning.quantiles = seq(0, 1, 0.2), ...) {
         q <- unique(q)
       }
       rank <- cut(grid[, name], q, include.lowest = TRUE)
+      # If the cut is only a single level, the variable is binary and we can
+      # aggregate by that directly.
+      if (length(levels(rank)) == 1) {
+        rank = grid[, name]
+      }
       out <- aggregate(grid[, "error"], by = list(rank), FUN = mean)
       colnames(out) <- c(name, "error")
       out
