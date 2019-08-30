@@ -24,7 +24,7 @@
 #include "tree/Tree.h"
 #include "relabeling/RelabelingStrategy.h"
 
-class InstrumentalRelabelingStrategy: public RelabelingStrategy {
+class InstrumentalRelabelingStrategy final: public RelabelingStrategy {
 public:
   InstrumentalRelabelingStrategy();
 
@@ -32,7 +32,7 @@ public:
 
   std::vector<double> relabel(
       const std::vector<size_t>& samples,
-      const Data* data);
+      const Data* data) const;
 
   DISALLOW_COPY_AND_ASSIGN(InstrumentalRelabelingStrategy);
 

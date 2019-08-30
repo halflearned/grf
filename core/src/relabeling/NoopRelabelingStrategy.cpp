@@ -19,7 +19,7 @@
 
 std::vector<double> NoopRelabelingStrategy::relabel(
     const std::vector<size_t>& samples,
-    const Data* data) {
+    const Data* data) const {
 
   std::vector<double> relabeled_observations;
   relabeled_observations.resize(data->get_num_rows());

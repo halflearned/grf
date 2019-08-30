@@ -87,13 +87,19 @@ The parameter `num.trees` controls how many trees are grown during training, and
 
 Tree training is parallelized across several threads in an effort to improve performance. By default, all available cores are used, but the number of threads can be set directly through `num.threads`.
 
-#### `honesty`
+#### `honesty`, `honesty.fraction`, `prune.empty.leaves`
 
-By default, 'honest' forests are trained. In a classic random forest, a single subsample is used both to choose a tree's splits, and for the leaf node examples used in making predictions. In contrast, honest forests randomly split this subsample in half, and use only the first half when performing splitting. The second half is then used to populate the tree's leaf nodes: each new example is 'pushed down' the tree, and added to the leaf in which it falls. In a sense, the leaf nodes are 'repopulated' after splitting using a fresh set of examples.
+By default, 'honest' forests are trained. The motivation behind honesty is to reduce bias in tree predictions, by using different subsamples for constructing the tree and for making predictions. Honesty is a well-explored idea in the academic literature on random forests, but is not yet common in software implementations. This section gives an algorithmic explanation of honesty; for a more formal overview, please see section 2.4 of Wager and Athey (2018).
 
-The motivation behind honesty is to reduce bias in tree predictions, by using different subsamples for constructing the tree and for making predictions. Honesty is a well-explored idea in the academic literature on random forests, but is not yet common in software implementations. For a more formal overview, please see section 2.4 of Wager and Athey (2018).
+In a classic random forest, a single subsample is used both to choose a tree's splits, and for the leaf node examples used in making predictions. In contrast, honest forests randomly split this subsample in half, and use only the first half when performing splitting. The second half is then used to populate the tree's leaf nodes: each new example is 'pushed down' the tree, and added to the leaf in which it falls. In a sense, the leaf nodes are 'repopulated' after splitting using a fresh set of examples.
 
-It's important to note that honesty may hurt performance when working with very small datasets. In this set-up, the subsample used to determine tree splits is already small, and honesty further cuts this subsample in half, so there may no longer be enough information to choose high-quality splits. To disable honesty during training, you can set the parameter `honesty` to `FALSE`.
+After repopulating a tree's leaves using the second half-sample, it is possible that some leaves end up empty. With empty leaves, a tree is not able to handle certain test examples and needs to be skipped when computing those predictions. By default, empty leaves are pruned away after training so that each tree is able to handle all test points. GRF's behavior with respect to empty leaves can be controlled through the parameter `prune.empty.leaves`.
+
+It's important to note that honesty may hurt performance when working with very small datasets. In this set-up, the subsample used to determine tree splits is already small, and honesty further cuts this subsample in half, so there may no longer be enough information to choose high-quality splits. There are a couple options for mitigating the cost of honesty in small samples:
+- The parameter `honesty.fraction` allows for increasing the fraction of samples used in selecting tree splits. For example, an honesty fraction of 0.7 directs GRF to use 70% of the tree subsample for splitting, and the other 30% to populate the leaf nodes. If GRF is not working well on a small sample, we've found empirically that it can help to increase `honesty.fraction` and set `prune.empty.leaves` to `FALSE`. With these settings, it may also be necessary to increase the number of trees grown in training through `num.trees`.
+- Alternatively, honesty can be completely disabled during training by setting the parameter `honesty` to `FALSE`.
+
+When automatically tuning parameters through `tune.parameters`, GRF will try varying `honesty.fraction` between 0.5 and 0.8, and consider both options for `prune.empty.leaves`. More information on automatic parameter selection can be found in the 'Parameter Tuning' section below.
 
 #### `mtry`
 
@@ -191,7 +197,12 @@ The following sections describe other features of GRF that may be of interest.
 
 ### Parameter Tuning
 
-The accuracy of a forest can be sensitive to the choice of `min.node.size`, `sample.fraction`, and `mtry`, as well as the split balance parameters `alpha` and `imbalance.penalty`. GRF provides a cross-validation procedure to select values of these parameters to use in training. To enable this parameter tuning in training, the option `tune.parameters = TRUE` can be passed to forest method. The cross-validation methods can also be called directly through `tune_regression_forest` and`tune_causal_forest`. Parameter tuning is currently disabled by default, as we are still finalizing some details of the algorithm.
+The accuracy of a forest can be sensitive to several training parameters:
+- the core options tree-growing options `min.node.size`, `sample.fraction`, and `mtry`
+- the parameters that control honesty behavior `honesty.fraction` and `prune.empty.leaves`
+- the split balance parameters `alpha` and `imbalance.penalty`
+
+GRF provides a cross-validation procedure to select values of these parameters to use in training. To enable this tuning during training, the option `tune.parameters = TRUE` can be passed to main forest method. The cross-validation methods can also be called directly through `tune_regression_forest` and`tune_causal_forest`. Parameter tuning is currently disabled by default.
 
 The cross-validation procedure works as follows:
 - Draw a number of random points in the space of possible parameter values. By default, 100 distinct sets of parameter values are chosen.
@@ -199,6 +210,8 @@ The cross-validation procedure works as follows:
   - For tuning to be computationally tractable, we only train 'mini forests' composed of 10 trees. With such a small number of trees, the out-of-bag error gives a biased estimate of the final forest error. We therefore debias the error through a simple variance decomposition.
   - While the notion of error is straightforward for regression forests, it can be more subtle in the context of treatment effect estimation. For causal forests, we use a measure of error developed in Nie and Wager (2017) motivated by residual-on-residual regression (Robinson, 1988).
 - Finally, given the debiased error estimates for each set of parameters, we apply a smoothing function to determine the optimal parameter values.
+
+Note that `honesty.fraction` and `prune.empty.leaves` are only considered for tuning when `honesty = TRUE` (its default value). Parameter tuning does not try different options of `honesty` itself.
 
 ### Boosted Regression Forests
 
@@ -248,9 +261,9 @@ Our current implementation does not use the sample weights during tree splitting
 
 ### GRF isn't working well on a small dataset.
 
-If you observe poor performance on a dataset with a small number of examples, it may be worth trying out two changes:
-- Disabling honesty. As noted in the section on honesty above, when honesty is enabled, the training subsample is further split in half before performing splitting. This may not leave enough information for the algorithm to determine high-quality splits.
-- Skipping the variance estimate computation, by setting `ci.group.size` to 1 during training, then increasing `sample.fraction`. Because of how variance estimation is implemented, `sample.fraction` cannot be greater than 0.5 when it is enabled. If variance estimates are not needed, it may help to disable this computation and use a larger subsample size for training.
+If you observe poor performance on a dataset with a small number of examples, there are two changes worth looking into:
+- Adjusting honesty parameters during training. When honesty is enabled, the training subsample is further split in half before performing splitting. This may not leave enough information for the algorithm to determine high-quality splits. The section above on the `honesty` parameter gives guidance on how to mitigate the issue.
+- Skipping the variance estimate computation by setting `ci.group.size` to 1 during training, then increasing `sample.fraction`. Because of how variance estimation is implemented, `sample.fraction` cannot be greater than 0.5 when it is enabled. If variance estimates are not needed, it may help to disable this computation and use a larger subsample size for training.
 
 ### The variance estimates are jumpy or very large.
 
@@ -273,6 +286,20 @@ For further discussion of the overlap assumption, please see Imbens and Rubin (2
 ### Regression forest predictions differ from those of the randomForest and ranger packages.
 
 While the algorithm in `regression_forest` is very similar to that of classic random forests, it has several notable differences, including 'honesty', group tree training for variance estimates, and restrictions during splitting to avoid imbalanced child nodes. These features can cause the predictions of the algorithm to be different, and also lead to a slower training procedure than other packages. We welcome GitHub issues that shows cases where GRF does notably worse than other packages (either in statistical or computational performance), as this will help us choose better defaults for the algorithm, or potentially point to a bug.
+
+
+### Forests predict different values depending on the platform even though the seed is the same
+
+Overall, GRF is designed to produce the same estimates across platforms when using a consistent value for the random seed through the training option seed. However, there are still some cases where GRF can produce different estimates across platforms. When it comes to cross-platform predictions, the output of GRF will depend on a few factors beyond the forest seed.
+
+One such factor is the compiler that was used to build GRF. Different compilers may have different default behavior around floating-point rounding, and these could lead to slightly different forest splits if the data requires numerical precision. Another factor is how the forest construction is distributed across different threads. Right now, our forest splitting algorithm can give different results depending on the number of threads that were used to build the forest.
+
+Therefore, in order to ensure consistent results, we provide the following recommendations.
+- Make sure arguments `seed` and `num.threads` are the same across platforms
+- Round data to 8 significant digits
+
+Also, please note that we have not done extensive testing on Windows platforms, although we do not expect random number generation issues there to be different from Linux/Mac. Regardless of the platform, if results are still not consistent please help us by submitting a Github issue.
+
 
 ## References
 

@@ -20,11 +20,11 @@
 
 #include "relabeling/RelabelingStrategy.h"
 
-class NoopRelabelingStrategy: public RelabelingStrategy {
+class NoopRelabelingStrategy final: public RelabelingStrategy {
 public:
   std::vector<double> relabel(
       const std::vector<size_t>& samples,
-      const Data* data);
+      const Data* data) const;
 };
 
 

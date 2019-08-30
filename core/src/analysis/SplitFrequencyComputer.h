@@ -15,8 +15,8 @@
   along with grf. If not, see <http://www.gnu.org/licenses/>.
  #-------------------------------------------------------------------------------*/
 
-#ifndef GRF_VARIABLEIMPORTANCECOMPUTER_H
-#define GRF_VARIABLEIMPORTANCECOMPUTER_H
+#ifndef GRF_SPLITFREQUENCYCOMPUTER_H
+#define GRF_SPLITFREQUENCYCOMPUTER_H
 
 
 #include "forest/Forest.h"
@@ -31,8 +31,8 @@
 class SplitFrequencyComputer {
 public:
   std::vector<std::vector<size_t>> compute(const Forest& forest,
-                                           size_t max_depth);
+                                           size_t max_depth) const;
 };
 
 
-#endif //GRF_VARIABLEIMPORTANCECOMPUTER_H
+#endif //GRF_SPLITFREQUENCYCOMPUTER_H

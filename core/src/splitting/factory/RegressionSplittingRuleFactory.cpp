@@ -18,10 +18,8 @@
 #include "splitting/factory/RegressionSplittingRuleFactory.h"
 #include "splitting/RegressionSplittingRule.h"
 
-RegressionSplittingRuleFactory::RegressionSplittingRuleFactory() {}
-
 std::shared_ptr<SplittingRule> RegressionSplittingRuleFactory::create(const Data* data,
-                                                                      const TreeOptions& options) {
+                                                                      const TreeOptions& options) const {
   return std::shared_ptr<SplittingRule>(new RegressionSplittingRule(
       data, options.get_alpha(), options.get_imbalance_penalty()));
 }

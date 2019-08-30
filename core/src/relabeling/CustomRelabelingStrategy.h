@@ -21,11 +21,11 @@
 
 #include "RelabelingStrategy.h"
 
-class CustomRelabelingStrategy: public RelabelingStrategy {
+class CustomRelabelingStrategy final: public RelabelingStrategy {
 public:
   std::vector<double> relabel(
       const std::vector<size_t>& samples,
-      const Data* data);
+      const Data* data) const;
 };
 
 

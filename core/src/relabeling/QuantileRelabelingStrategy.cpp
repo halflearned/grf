@@ -25,9 +25,10 @@ QuantileRelabelingStrategy::QuantileRelabelingStrategy(const std::vector<double>
 
 std::vector<double> QuantileRelabelingStrategy::relabel(
     const std::vector<size_t>& samples,
-    const Data* data) {
+    const Data* data) const {
 
   std::vector<double> sorted_outcomes;
+  sorted_outcomes.reserve(samples.size());
   for (size_t sample : samples) {
     sorted_outcomes.push_back(data->get_outcome(sample));
   }
