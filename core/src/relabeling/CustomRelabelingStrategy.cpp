@@ -19,6 +19,6 @@
 
 std::vector<double> CustomRelabelingStrategy::relabel(
     const std::vector<size_t>& samples,
-    const Data* data) {
+    const Data* data) const {
   return std::vector<double>();
 }
